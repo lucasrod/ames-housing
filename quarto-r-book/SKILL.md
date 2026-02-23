@@ -116,19 +116,103 @@ Never duplicate the code that generates a table. Define once, embed elsewhere.
 
 ## R Integration Patterns
 
-### .Rprofile for shared setup
+Quarto Books with R typically use three patterns for organizing code: `.Rprofile` for global setup, `knitr::read_chunk()` for reusable labeled chunks, and direct `source()` for function libraries.
+
+### Pattern 1: .Rprofile for automatic global loading
+
+**When to use**: setup code and helper functions needed across **all** chapters.
+
+**How it works**: `.Rprofile` in the project root executes automatically when RStudio opens or R starts in the project directory. Scripts loaded here become globally available without explicit `source()` or `library()` in any `.qmd` file.
+
+**Setup** (`.Rprofile` in project root):
 
 ```r
-# .Rprofile (project root)
-source("scripts/setup.R")          # libraries + options
+# .Rprofile
+source("scripts/setup.R")           # libraries + knitr options
 source("scripts/funciones-tablas.R") # helper functions
 ```
 
-Every chapter inherits these without explicit `source()` calls.
+**Example `scripts/setup.R`**:
 
-### knitr::read_chunk for external R scripts
+```r
+library(tidyverse)
+library(modeldata)
+library(skimr)
+library(scales)
+library(knitr)
 
-Register labeled chunks from an R script:
+# Resolve namespace conflicts
+conflicted::conflicts_prefer(dplyr::filter, dplyr::lag)
+
+# knitr options
+opts_chunk$set(fig.width = 8, fig.height = 5)
+```
+
+**Example `scripts/funciones-tablas.R`**:
+
+```r
+create_num_classification_table <- function(dict, data, vars = NULL) {
+  # Helper function for descriptive tables
+  # ...
+}
+
+create_zero_proportion_table <- function(dict, data, top_n = NULL) {
+  # Helper function for zero proportion analysis
+  # ...
+}
+```
+
+**Usage in any `.qmd` file** (no setup needed):
+
+```r
+#| label: zeros-structural
+create_zero_proportion_table(ames_dict, ames_raw, top_n = 15)
+```
+
+**Benefits**:
+- Consistent environment across all chapters
+- No repeated `library()` or `source()` calls
+- Helper functions instantly available
+- Single point of configuration
+
+**Caveat**: changes to `.Rprofile` require restarting the R session.
+
+---
+
+### Pattern 2: knitr::read_chunk() for labeled chunks
+
+**When to use**: function definitions that you want to define in `.R` files but reference cleanly in `.qmd` files (keeps narrative separate from code).
+
+**How it works**: Label chunks in the `.R` file with `## ---- label ----`, register them with `knitr::read_chunk()`, then use empty chunks with `#| label:` in the `.qmd` to pull in the definitions. After loading, invoke functions normally.
+
+**Setup in `.R` file** (`scripts/data-cleaning.R`):
+
+```r
+## ---- convert-structural-zeros ----
+#' Convert structural zeros to NA
+#'
+#' @param data Tibble or data.frame
+#' @param zero_vars Character vector of variable names
+#' @return Tibble with zeros converted to NA
+convert_structural_zeros_to_na <- function(data, zero_vars, verbose = FALSE) {
+  # ... function implementation ...
+  data_out
+}
+
+## ---- create-has-indicators ----
+#' Create binary has_* indicators from categorical variables
+#'
+#' @param data Tibble or data.frame
+#' @param cat_vars Character vector of categorical variable names
+#' @param none_levels Character vector of absence levels (e.g., "None", "No_Garage")
+#' @return Tibble with new has_* columns
+create_has_indicators <- function(data, cat_vars, none_levels) {
+  # ... function implementation ...
+  data_out
+}
+```
+
+**Usage in `.qmd` file** (`chapters/03-data-cleaning.qmd`):
 
 ```r
 #| label: register-clean
@@ -136,25 +220,109 @@ Register labeled chunks from an R script:
 knitr::read_chunk("../scripts/data-cleaning.R")
 ```
 
-Then use the labels as chunk names in the `.qmd`:
-
 ```r
 #| label: convert-structural-zeros
+# Empty chunk — definition comes from the .R file
 ```
 
-The chunk body comes from the R script. Keeps `.qmd` files narrative-focused.
+```r
+#| label: structural-zero-clean
+structural_zero_vars <- c("Pool_Area", "Garage_Area", "Mas_Vnr_Area")
 
-### Direct source()
+# Now invoke the function that was defined in the previous chunk
+ames1 <- convert_structural_zeros_to_na(ames_raw, zero_vars = structural_zero_vars)
+
+# Access attached metadata
+attr(ames1, "zero_summary") %>% knitr::kable()
+```
+
+**Pattern summary**:
+
+1. **Register** chunks: `knitr::read_chunk("../scripts/data-cleaning.R")`
+2. **Load** definitions: empty chunk with `#| label: convert-structural-zeros`
+3. **Invoke** functions: `ames1 <- convert_structural_zeros_to_na(...)`
+
+**Benefits**:
+- Function definitions stay in `.R` files (easier to test, reuse)
+- `.qmd` files remain narrative-focused
+- Code appears in rendered output if desired
+- Can show/hide definitions with `echo` option
+
+**Note**: use `cache: FALSE` on the registration chunk to ensure chunks reload on each render.
+
+---
+
+### Pattern 3: Direct source() for function libraries
+
+**When to use**: collections of functions that don't need to appear as visible chunks in the rendered output.
+
+**How it works**: `source()` loads all functions from the `.R` file into the current environment, making them immediately callable.
+
+**Setup in `.R` file** (`scripts/transformations.R`):
 
 ```r
+# scripts/transformations.R
+# Pure functions for data transformations
+
+drop_outliers_grlivarea <- function(data, cutoff = 4000, col = "Gr_Liv_Area") {
+  n_before <- nrow(data)
+  data_out <- data %>% filter(.data[[col]] <= cutoff | is.na(.data[[col]]))
+  n_dropped <- n_before - nrow(data_out)
+
+  attr(data_out, "dropped_grlivarea_rows") <- n_dropped
+  data_out
+}
+
+subset_for_intro <- function(data, sale_condition_col = "Sale_Condition",
+                             max_area = 1500, area_col = "Gr_Liv_Area") {
+  data %>%
+    filter(.data[[sale_condition_col]] == "Normal") %>%
+    filter(.data[[area_col]] <= max_area | is.na(.data[[area_col]]))
+}
+
+create_total_sqft <- function(data) {
+  data %>%
+    mutate(Total_SqFt = Total_Bsmt_SF + Gr_Liv_Area)
+}
+```
+
+**Usage in `.qmd` file** (`chapters/04-transformations.qmd`):
+
+```r
+#| label: load-transformations
 source("../scripts/transformations.R")
 ```
 
-Use when you need functions but don't need labeled chunks.
+```r
+#| label: apply-transformations
+# Functions are now available
+ames_tf <- drop_outliers_grlivarea(ames_clean, cutoff = 4000)
+ames_tf <- subset_for_intro(ames_tf, max_area = 1500)
+ames_tf <- create_total_sqft(ames_tf)
+```
 
-### Path note
+**Benefits**:
+- Simplest pattern for utility functions
+- All functions load at once
+- No chunk registration needed
+- Clean separation of logic and narrative
 
-From `chapters/*.qmd`, data and scripts are one level up: `../data/`, `../scripts/`.
+**When not to use**: if you want function definitions visible in the rendered book (use Pattern 2 instead).
+
+---
+
+### Path conventions
+
+From files in `chapters/*.qmd`:
+- Data: `../data/ames_clean.rds`
+- Scripts: `../scripts/transformations.R`
+- Images: `../images/figure.png`
+
+From `index.qmd` (project root):
+- Data: `data/ames_clean.rds`
+- Scripts: `scripts/transformations.R`
+
+Always use relative paths, never absolute paths (`/Users/...` or `C:\...`).
 
 ## Code Chunk Essentials
 
@@ -245,6 +413,8 @@ Hidden by default.
 
 ## Common Pitfalls
 
+### Cross-references
+
 | Issue | Fix |
 |-------|-----|
 | `@tbl-foo` shows "Unknown reference" | Add `#| tbl-cap:` to the source chunk |
@@ -253,6 +423,16 @@ Hidden by default.
 | Duplicate label error | Never define the same label in two files; use embed instead |
 | `references.qmd` empty | Add `::: {#refs} :::` div |
 | Numbers show "Table" not "Tabla" | Add `crossref:` config to `_quarto.yml` |
-| `.Rprofile` not loading | Must be in project root; check `getwd()` |
-| `read_chunk()` labels not found | Use `cache: FALSE` on the registration chunk |
-| Data paths broken from chapters/ | Use `../data/` (relative to chapter location) |
+
+### R Integration
+
+| Issue | Fix |
+|-------|-----|
+| `.Rprofile` not loading | Must be in project root; check `getwd()`. Restart R session after changes. |
+| Functions from `.Rprofile` scripts not available | Ensure `.Rprofile` has `source("scripts/filename.R")` and restart R session |
+| `read_chunk()` labels not found | Use `cache: FALSE` on the registration chunk. Check chunk labels match exactly: `## ---- label ----` in .R, `#| label: label` in .qmd |
+| "Object not found" after `read_chunk()` | Empty labeled chunk only loads the definition. You must still invoke the function in a separate chunk. |
+| Chunk appears twice in output | Don't use both `read_chunk()` empty chunk AND explicit function definition in the .qmd. Choose one pattern. |
+| `source()` fails with "cannot open file" | Check relative path from current .qmd location. From `chapters/*.qmd`, use `../scripts/`. |
+| Data paths broken from chapters/ | Use `../data/` (relative to chapter location), not `data/` |
+| Changes in sourced .R files not reflected | Clear knitr cache: delete `_book/` and re-render, or set `cache: FALSE` on chunks using those functions |
