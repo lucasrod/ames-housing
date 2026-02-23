@@ -1,0 +1,293 @@
+---
+title: "Transformaciones e ingeniería de características"
+subtitle: "Pipeline genérico aplicable a MODEL 1 y MODEL 2 (basado en De Cock 2011)"
+---
+
+```{r}
+#| include: false
+#| label: dependencies
+library(modeldata)  # Conjunto Ames housing
+```
+
+```{r}
+#| label: register-transformations
+#| include: false
+# Registrar los chunks del script de funciones
+knitr::read_chunk("../scripts/transformations.R")
+## no se ha implementado como en el cap anterior
+```
+
+## Propósito del capítulo
+
+En el capítulo anterior limpiamos y armonizamos el conjunto Ames (`ames_clean`): ceros estructurales → `NA`, alineación categórico-numérica, indicadores `has_*`, etc. Este capítulo documenta y ejecuta todas las transformaciones genéricas recomendadas por De Cock (2011) que son pertinentes tanto para MODEL 1 (modelo simplista) como para MODEL 2 (modelo complejo).
+
+Las transformaciones aquí definidas constituyen la base sobre la que luego construiremos estrategias específicas de modelado.
+
+## Fundamentación (¿por qué transformar?)
+
+De Cock destaca que la abundancia de variables continuas en el dataset de Ames brinda “muchas oportunidades” para que los estudiantes experimenten con distintas formas de utilizar y combinar atributos en la predicción del precio de venta. En este sentido, las transformaciones y la ingeniería de variables no son solo herramientas técnicas, sino decisiones estratégicas que afectan la interpretabilidad, la calidad del ajuste y el cumplimiento de supuestos del modelo.
+
+También advierte que varios niveles categóricos son difíciles de interpretar directamente y sugiere **recodificar variables categóricas** en formatos más manejables, como variables indicadoras (dummies). Por ejemplo, se muestra cómo transformar `Fireplaces` en una variable binaria `FireYN` (1 si hay chimenea, 0 si no), lo que permite integrar de forma simple efectos cualitativos al modelo.
+
+En cuanto a las reglas específicas según el tipo de modelo:
+
+-   Para el **MODEL 1** (modelo simple y enfocado en la interpretación):
+
+    -   Se permiten **transformaciones de potencia** sobre las variables originales: raíz cuadrada, logaritmos, cuadrados, inversos, etc.
+    -   **No se permiten interacciones** ni el uso redundante de la misma variable en distintas formas (por ejemplo, usar `x` y `x²` simultáneamente).
+    -   Se alienta el uso de un número acotado de variables (mínimo 6, máximo razonable), para que el foco esté en **la interpretación estadística y los supuestos del modelo lineal**.
+    -   Se recomienda **eliminar valores extremos**, como viviendas con `Gr_Liv_Area > 4000` pies cuadrados, que corresponden a ventas parciales o propiedades atípicas.
+
+-   Para el **MODEL 2** (modelo complejo y centrado en el ajuste):
+
+    -   Se permite crear **nuevas variables derivadas**, incluyendo interacciones, polinomios, dummies, recodificaciones y combinaciones de variables originales.
+    -   Este modelo busca maximizar la capacidad predictiva y puede ser evaluado con técnicas de validación cruzada o división entrenamiento/test.
+    -   Se sugiere fijar un límite en la cantidad de términos usados para evitar sobreajuste (overfitting) y fomentar modelos parsimoniosos.
+
+Para cursos introductorios o enfoques más didácticos, el autor propone algunas estrategias para **simplificar la estructura de datos** y evitar complicaciones innecesarias:
+
+-   Filtrar solo aquellas observaciones con `SaleCondition == "Normal"`.
+-   Usar únicamente viviendas con `Gr_Liv_Area ≤ 1500` para evitar problemas de heterocedasticidad sin necesidad de transformar la variable respuesta.
+-   Alternativamente, aplicar una **raíz cuadrada sobre `SalePrice`** para estabilizar la varianza manteniendo el resto del conjunto.
+
+Además, para mejorar la estabilidad y sentido de los coeficientes en modelos con variables ordinales, se recomienda:
+
+-   **Colapsar escalas extensas** en menos categorías (por ejemplo, reducir una escala de 10 niveles de calidad a 3 niveles: baja, media, alta).
+-   Manipular los nombres de los niveles (por ejemplo, anteponer “z” a la categoría base) para **controlar la referencia en modelos con codificación dummy**, especialmente en software como Minitab o SPSS.
+-   Tratar variables discretas (como número de baños o dormitorios) como **covariables numéricas** en lugar de factores, para evitar efectos no-monotónicos en los coeficientes.
+
+Finalmente, De Cock reporta un modelo benchmark que explica aproximadamente **80% de la variación en `SalePrice`** utilizando solo `Neighborhood` y `Total SqFt` (suma de `Total_Bsmt_SF` y `Gr_Liv_Area`), lo que justifica la creación de esta **variable derivada compuesta** como una de las más relevantes del conjunto.
+
+## Preparación de datos para transformaciones
+
+Cargamos el objeto limpio persistido al final del capítulo de limpieza (`../data/ames_clean.rds`).
+
+```{r}
+#| label: load-clean
+ames_clean <- readr::read_rds("../data/ames_clean.rds")
+glimpse(ames_clean)
+```
+
+### Parámetros reproducibles
+
+Usaremos parámetros que podrás sobreescribir desde **YAML params** o al llamar a `quarto render` con `-P`. Los defaults siguen las recomendaciones de De Cock para análisis general (no sub-muestreo intro y sí filtrar \>4000 sq ft).
+
+```{r}
+#| label: params-transform
+tf_params <- list(
+  filter_outliers = TRUE,
+  cutoff          = 4000,
+  intro_subset    = FALSE,    # poné TRUE para versión "docente intro"
+  keep_normal     = TRUE,
+  max_area        = 1500
+)
+tf_params
+```
+
+## Definición de funciones (traídas del script)
+
+Las funciones genéricas se declaran en `../scripts/transformations.R` (ver chunk oculto a continuación).
+
+```{r}
+#| echo: true
+#| code-summary: "Mostrar código de funciones de transformación"
+#| code-fold: show
+# Incrustamos el script
+# <<../scripts/transformations.R>>
+source("../scripts/transformations.R")
+```
+
+## Ejecución del pipeline genérico
+
+En esta sección aplicamos, en orden, las transformaciones core. El resultado será `ames_tf`, que sirve como base para ambos modelos.
+
+### Filtro de outliers `Gr_Liv_Area > cutoff`
+
+De Cock recomienda remover viviendas \>4000 sq ft (incluye ventas parciales y construcciones inusuales) antes de distribuir el conjunto.
+
+```{r}
+#| label: tf-outliers
+ames_tf <- if (tf_params$filter_outliers) {
+  drop_outliers_grlivarea(ames_clean, cutoff = tf_params$cutoff)
+} else {
+  ames_clean
+}
+attr(ames_tf, "transform_log")
+```
+
+### Subconjunto opcional “introductorio” (ventas normales y viviendas pequeñas)
+
+Para actividades de nivel inicial, De Cock sugiere restringirse a ventas `Normal` y viviendas con `Gr_Liv_Area ≤ 1500`; esto mejora la homogeneidad de varianza cuando se desea mantener `SalePrice` en dólares sin transformar. Alternativamente, transformar la respuesta (√SalePrice) logra efecto similar.
+
+```{r}
+#| label: tf-intro-subset
+if (tf_params$intro_subset) {
+  ames_tf <- subset_for_intro(
+    ames_tf,
+    keep_normal = tf_params$keep_normal,
+    max_area    = tf_params$max_area
+  )
+}
+attr(ames_tf, "transform_log")
+```
+
+*(Si vas a entrenar MODEL 1/2 sobre el conjunto completo, dejá `intro_subset = FALSE`.)*
+
+### Crear **Total_SqFt** (Total_Bsmt_SF + Gr_Liv_Area)
+
+La suma de superficie de sótano + superficie sobre nivel es un predictor de tamaño agregado; De Cock señala que `Neighborhood + Total_SqFt` explica \~80 % de la variación en precios.
+
+```{r}
+#| label: tf-total-sqft
+ames_tf <- add_total_sqft(ames_tf)
+summary(ames_tf$Total_SqFt)
+```
+
+### Crear **FireYN** (indicador de chimenea)
+
+En su ejemplo de regresión múltiple, De Cock recodifica `Fireplaces` como dummy 1/0 (**FireYN**) para ilustrar cómo mezclar predictores de distinto tipo.
+
+```{r}
+#| label: tf-fireyn
+ames_tf <- add_fire_yn(ames_tf)
+table(ames_tf$FireYN, useNA = "ifany")
+```
+
+### Indicadores `has_*` de presencia/ausencia a partir de niveles “None/No\_\*”
+
+El capítulo de limpieza creó varios indicadores; aquí mostramos cómo generar (o regenerar) indicadores de presencia utilizando el helper `add_has_indicators()`. La necesidad de recodificar niveles de ausencia (“No_Garage”, “No_Basement”, etc.) está sustentada por la recomendación de convertir variables categóricas en dummies y ayudar a los estudiantes a combinar información.
+
+```{r}
+#| label: tf-has-indicators
+none_levels <- c("None","No_Alley_Access","No_Pool","No_Fence","No_Garage","No_Basement")
+has_vars    <- c("Pool_QC","Mas_Vnr_Type","Garage_Cond","Bsmt_Cond","Fence","Alley")
+
+ames_tf <- add_has_indicators(
+  ames_tf,
+  vars        = has_vars,
+  none_levels = none_levels
+)
+
+ames_tf %>%
+  select(starts_with("has_")) %>%
+  summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
+  pivot_longer(everything(), names_to = "indicador", values_to = "n_1") %>%
+  knitr::kable(caption = "Conteos de indicadores de presencia")
+```
+
+### Colapsar escalas ordinales extensas
+
+Las escalas de calidad/condición con 5–10 niveles pueden producir coeficientes no monótonos. De Cock recomienda colapsarlas a menos categorías para interpretaciones consistentes.
+
+Aquí mostramos un ejemplo con `Bsmt_Cond` (ajustá el *mapping* según tus necesidades; los nombres ilustrativos “Low/Typical/Good” son tuyos, no provienen del artículo).
+
+```{r}
+#| label: tf-collapse-ordinal
+# Ejemplo de mapeo (adaptar a niveles reales de la variable)
+levels(ames_tf$Bsmt_Cond)
+
+bsmt_map <- list(
+  Good    = c("Excellent","Good"),
+  Typical = c("Typical","Fair"),
+  Poor    = c("Poor","Very_Poor")  # si existiese
+)
+
+ames_tf <- collapse_levels(ames_tf, var = "Bsmt_Cond", mapping = bsmt_map, new = "Bsmt_Cond_grp")
+table(ames_tf$Bsmt_Cond_grp, useNA = "ifany")
+```
+
+> **Nota:** Ajustá la lista de mapeo a los niveles reales en tu objeto `ames_tf`; los nombres de ejemplo no son canónicos.
+
+### Forzar categoría de referencia (baseline) en factores
+
+En software que toma la **última categoría alfabética** como referencia, De Cock sugiere manipular nombres (por ej., renombrar “Average” a “Typical/Average” o anteponer `z_` al baseline deseado) para facilitar interpretaciones de coeficientes.
+
+Aquí forzamos la categoría base para `Fence` (ilustrativo):
+
+```{r}
+#| label: tf-baseline
+# 1) Definís las variables categóricas que querés relevelar
+vars <- c("Bsmt_Cond", "Fence", "Garage_Cond", "Neighborhood")
+
+# 2) Opcional: mapa de los niveles que querés forzar
+baseline_map <- c(
+  Bsmt_Cond    = "Typical",
+  Garage_Cond  = "No_Garage"
+  # para Fence y Neighborhood no pasamos nada: usarán la moda
+)
+
+# 3) La aplicás sobre tu tibble limpio
+ames_releveled <- force_baselines_first(ames_tf, vars, baseline_map)
+
+# 4) Verificás primeros niveles
+map_chr(vars, ~ levels(ames_releveled[[.x]])[1])
+# Ej: "Typical", "Fair", "No_Garage", "NAmes"  (si "NAmes" fuera la moda)
+
+```
+
+### Tratamiento de variables de conteo como numéricas
+
+Cuando las variables discretas (número de baños, autos en el garaje) se tratan como factores, los coeficientes pueden aparecer “no ordenados” (p.ej., 4 baños reduce el precio). De Cock propone **tratarlas como covariables numéricas** para obtener incrementos por unidad más razonables (funcionó bien con baños; también con autos de garaje mediante colapsar categorías).
+
+En la práctica, esto significa **no recodificar** a factor (o, si lo están, convertir a numérico) antes de ajustar modelos. A modo de chequeo:
+
+```{r}
+#| label: tf-counts-numeric
+count_vars <- c("Full_Bath","Half_Bath","Bsmt_Full_Bath","Bsmt_Half_Bath",
+                "Garage_Cars","Fireplaces")
+ames_tf %>%
+  select(any_of(count_vars)) %>%
+  summarise(across(everything(), \(x) mean(x, na.rm = TRUE))) %>%
+  knitr::kable(caption = "Medias de variables de conteo (tratar como numéricas)")
+```
+
+### Aplicar transformaciones de potencia (√, log, inversa, cuadrado)
+
+**MODEL 1 permite transformaciones univariadas** de los predictores (√, log, inversa, cuadrado, etc.), pero **no interacciones** y **no usar la misma variable dos veces** (x y x² simultáneamente).
+
+**Precaución:** De Cock recuerda que no se pueden aplicar ciertas transformaciones (ln, inversa) si la variable contiene ceros; verificar antes.
+
+El helper `apply_power_transforms()` crea columnas transformadas con sufijos estandarizados. Definimos una especificación simple como ejemplo:
+
+```{r}
+#| label: tf-power-spec
+power_spec <- list(
+  Lot_Area       = c("log"),
+  Total_SqFt     = c("log","sq"),
+  Gr_Liv_Area    = c("sqrt"),
+  Sale_Price     = c("log")   # respuesta; se usa sólo si centramos fuera de fórmula
+)
+power_spec
+```
+
+> *Nota:* Aunque incluyo `Sale_Price` en el *spec*, normalmente transformarías la respuesta directamente en la fórmula o en un `recipe()` posterior; aquí sólo mostramos cómo generar una columna auxiliar (`Sale_Price_log_tr`).
+
+```{r}
+#| label: tf-apply-power
+ames_tf <- apply_power_transforms(ames_tf, spec = power_spec)
+names(ames_tf)[grepl("_tr$", names(ames_tf))]  # columnas nuevas
+```
+
+## Resultado del pipeline genérico
+
+```{r}
+#| label: tf-result-summary
+dim(ames_tf)
+attr(ames_tf, "transform_log")
+```
+
+Guardamos el objeto transformado para uso posterior (EDA, MODEL 1, MODEL 2):
+
+```{r}
+#| label: tf-save
+write_rds(ames_tf, "../data/ames_tf_generic.rds")
+```
+
+## Próximos pasos
+
+-   **Capítulo MODEL 1**: seleccionar subconjunto de ≤1 transformación por variable, sin interacciones, ≥6 predictores, R² objetivo ≥0.73.
+-   **Capítulo MODEL 2**: libre creación de nuevas variables, interacciones, polinomios; se evaluará con split entrenamiento/validación externo.
+
+### Referencias citadas
+
+Todas las recomendaciones provienen de: De Cock, D. (2011) *Ames, Iowa: Alternative to the Boston Housing Data as an End of Semester Regression Project*, Journal of Statistics Education, 19(3).

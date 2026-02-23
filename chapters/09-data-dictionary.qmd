@@ -1,0 +1,64 @@
+---
+title: "Diccionario de Variables"
+subtitle: "Definiciones, tipos semánticos y criterios de clasificación"
+---
+
+Este informe presenta un diccionario de variables correspondiente al conjunto *Ames Housing*, el cual fue adaptado del archivo original `DataDocumentation.txt` compilado por Dean De Cock (Truman State University). La versión original consta de 82 variables, sin embargo, en el presente proyecto contamos con **74 variables**, por lo que este diccionario es una traducción adaptada, centrada únicamente en aquellas columnas utilizadas durante el análisis.
+
+> **Fuente original**: [@ames_datadict_2011]. *Ames, Iowa: Alternative to the Boston Housing Data Set*. Journal of Statistics Education, 19(3).
+
+## Variables incluidas
+
+```{r}
+#| label: tbl-data-dictionary
+#| tbl-cap: "Diccionario de variables"
+
+ames_dict <- read_csv("../data/data-dictionary.csv", show_col_types = FALSE) %>% rename(tipo_semantico = type)
+ames_dict %>% arrange(variable) %>% kable()
+```
+
+```{r}
+#| label: tbl-data-dictionary-first10
+#| tbl-cap: "Primeras 10 variables del diccionario"
+ames_dict %>%
+  slice_head(n = 10) %>%
+  kable()
+```
+
+## Nota sobre niveles y codificaciones
+
+Este diccionario presenta las variables y su tipo semántico, pero **no detalla los niveles posibles** de aquellas que son categóricas (nominales u ordinales). Para un tratamiento más extensivo de los niveles observados en el conjunto de datos y las codificaciones especiales, consultar la @tbl-cat-levels en el Apéndice de Tablas.
+
+Dicha tabla presenta, para cada variable categórica, todos los niveles posibles junto con su frecuencia y proporción, complementando así la información estructural de este diccionario.
+
+> Decidimos incluir dicha tabla como parte de la etapa de **descripción de los datos** en el análisis, en lugar de en este informe, dado que las codificaciones pueden variar entre diferentes versiones del dataset.
+
+## Tipo semántico
+
+En análisis de datos, el **tipo semántico** se refiere al significado o rol que tiene cada variable en relación con el conjunto de datos, más allá de su clase primitiva en R (como `factor`, `integer` o `numeric`). Este concepto es crucial porque condiciona las decisiones sobre preprocesamiento, exploración visual y selección de métodos de modelado.
+
+Para este proyecto, las variables fueron clasificadas en cuatro tipos semánticos principales:
+
+- **Continua**: son variables que miden magnitudes físicas o monetarias en escalas continuas, permitiendo valores decimales. Algunos ejemplos del dataset incluyen superficies (`LotFrontage`, `Gr_Liv_Area`, `GarageArea`) o precios (`SalePrice`).
+
+- **Discreta**: representan conteos en números enteros, sin valores intermedios. Ejemplos comunes incluyen el número de habitaciones (`BedroomAbvGr`, `TotRms_AbvGrd`), baños (`FullBath`) o espacios para vehículos (`GarageCars`). También se incluyen variables que representan períodos temporales como años (`YearBuilt`, `YearSold`) o meses (`MoSold`).
+
+- **Nominal**: variables categóricas cuyos niveles no tienen un orden intrínseco, como el tipo de zonificación urbana (`MSZoning`), estilo de construcción (`HouseStyle`) o vecindario (`Neighborhood`). El orden de estas categorías es arbitrario y depende del análisis específico realizado.
+
+- **Ordinal**: variables categóricas cuyos niveles presentan un orden implícito, pero no necesariamente intervalos constantes entre ellos. Son ejemplos típicos las calificaciones de calidad general (`OverallQual`), condición externa de la vivienda (`ExterCond`) o calidad del sistema de calefacción (`HeatingQC`). Estas categorías siguen una escala natural que va de mejor a peor o viceversa.
+
+```{r}
+#| label: tbl-data-dictionary-types
+#| tbl-cap: "Distribución de variables por tipo semántico"
+
+ames_dict %>%
+  count(tipo_semantico) %>%
+  rename(n_vars = n) %>%
+  kable()
+```
+
+> La clasificación inicial en tipos semánticos fue realizada utilizando reglas basadas en patrones presentes en los nombres o las descripciones originales de las variables (por ejemplo, variables que contienen términos como `"Area"`, `"SF"` o `"Price"` fueron consideradas continuas desde el inicio). Luego se realizó una validación manual, contrastando dichas asignaciones iniciales con las definiciones explícitas contenidas en la documentación original de Dean De Cock (`DataDocumentation.txt`). Este proceso permitió resolver ambigüedades o corregir errores iniciales de clasificación.
+
+## Conclusión
+
+Este diccionario sirve como base para interpretar las transformaciones, imputaciones y visualizaciones presentadas en los capítulos de análisis descriptivo y modelado predictivo.

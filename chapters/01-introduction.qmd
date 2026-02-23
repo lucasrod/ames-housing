@@ -1,0 +1,65 @@
+---
+title: "Introducción"
+subtitle: "Análisis del mercado inmobiliario de Ames, Iowa"
+---
+
+## Introducción y antecedentes
+
+En este proyecto trabajaremos con el conjunto de datos conocido como *Ames Housing*, inicialmente presentado por Dean De Cock [@ames_decock_2011] en el artículo académico *"Ames, Iowa: Alternative to the Boston Housing Data"*. Este conjunto registra ventas de propiedades residenciales en la ciudad de Ames, Iowa, Estados Unidos, ocurridas entre los años 2006 y 2010. El conjunto de datos contiene 2930 registros con aproximadamente 80 variables que describen características físicas continuas (superficie total del terreno, metros cuadrados habitables, área del sótano), discretas (número de baños, cocinas, plazas de garage), ordinales (calidad general, condición general) y nominales (barrio, estilo de casa, estado de venta, entre otras).
+
+El mercado inmobiliario en Ames se caracteriza por una marcada heterogeneidad en términos de precios y perfiles de vivienda. Se observan propiedades con calidades constructivas, tamaños y ubicaciones muy diversas, lo que introduce una alta variabilidad tanto en variables continuas como categóricas. Por ejemplo, el **precio de venta (variable explicada, de respuesta o dependiente)**, varía entre \$12.789 y \$755.000 a través de más de 25 barrios distintos, cada uno con dinámicas propias. Esta variabilidad ofrece una valiosa oportunidad para explorar cómo las características estructurales y la ubicación influyen directamente sobre el valor de los inmuebles. En el análisis original se demostró que, de hecho, cerca del 80 % de la variación en el precio de venta podía ser explicada únicamente considerando la superficie total construida y el barrio en el cual se ubica la propiedad.
+
+Desde el enfoque estadístico, el conjunto plantea varios desafíos: variables de múltiples tipos (continuas, categóricas, ordinales), presencia de valores ausentes o codificaciones como `"None"`, y alta colinealidad entre predictores. También se observan indicios de heterocedasticidad, lo que refuerza la necesidad de aplicar herramientas rigurosas para modelar y visualizar los datos.
+
+Desde el punto de vista social, el precio puede interpretarse como una medida agregada de las preferencias del mercado, donde cada característica aporta valor percibido por los compradores. Analizar esa estructura permite no solo predecir precios, sino también identificar perfiles de viviendas y segmentos de mercado que no están explícitamente definidos, pero que pueden emerger mediante técnicas de *clustering*.
+
+## Objetivos
+
+Este proyecto tiene como objetivo principal analizar el conjunto de datos *Ames Housing* para comprender los factores que determinan el precio de venta de las viviendas y detectar posibles agrupamientos estructurales en el mercado inmobiliario local.
+
+Los objetivos específicos son:
+
+1.  **Caracterizar el conjunto de datos**: identificar el tipo de variables, codificaciones especiales y relaciones entre variables.
+
+2.  **Explorar la distribución del precio**: resumir y visualizar `Sale_Price` y su relación con variables clave como área habitable y barrio.
+
+3.  **Modelar el precio de venta**: ajustar un modelo de regresión lineal múltiple sobre `log(Sale_Price)` y evaluar la relevancia de las variables seleccionadas.
+
+4.  **Detectar patrones de agrupamiento**: aplicar técnicas de clustering (k-means y jerárquico) para identificar grupos de viviendas con características similares y analizar sus diferencias de precio.
+
+5.  **Evaluar estacionalidad**: estudiar la posible influencia del mes de venta en los precios, controlando por otras variables.
+
+6.  **Comunicar los hallazgos**: desarrollar visualizaciones claras y una narrativa accesible que facilite la comprensión del análisis y los resultados obtenidos.
+
+## Presentación del grupo
+
+El presente informe se entrega en el marco del proyecto final del curso **Estadística Descriptiva**. Los integrantes del grupo somos:
+
+-   **Lucas Rodriguez**: responsable del análisis estadístico y desarrollo del código en R.
+-   **Nahir Silva**: encargada de la presentación visual y oral del proyecto.
+
+Ambos integrantes participaron activamente en la definición de objetivos, exploración de datos y validación de resultados.
+
+## Preguntas de investigación
+
+1.  **Determinantes del precio**: ¿Cuánto cambia `log(Sale_Price)` según superficie habitable (`Gr_Liv_Area`) y tamaño del garage (`Garage_Cars` o `Garage_Area`), controlando por barrio (`Neighborhood`)?
+
+2.  **Clustering de vivienda**: ¿Qué grupos de viviendas pueden identificarse al aplicar métodos de clustering no supervisado (k-means y jerárquico aglomerativo con enlace promedio) según sus características físicas? ¿Cómo se diferencian estos grupos en términos de `Sale_Price`?
+
+3.  **Influencia del barrio**: ¿Cuánto varía el precio de venta según el barrio (`Neighborhood`), una vez ajustado por las características físicas?
+
+4.  **Efecto temporal / estación**: ¿Hay patrón estacional en el mes de venta (`Mo_Sold`) sobre el precio, una vez ajustado por características principales?
+
+## Estructura del Informe
+
+El informe se organiza en ocho capítulos y un apéndice, de acuerdo con la lógica del proceso de análisis de datos:
+
+-   Capítulo 1: Introducción (este capítulo)
+-   Capítulo 2: Descripción del conjunto de datos
+-   Capítulo 3: Limpieza de datos
+-   Capítulo 4: Transformaciones y creación de variables
+-   Capítulo 5: Análisis exploratorio de datos (EDA)
+-   Capítulo 6: Modelado predictivo
+-   Capítulo 7: Agrupamiento de viviendas (clustering)
+-   Capítulo 8: Conclusiones
+-   Apéndice: Diccionario de Variables, tablas y resultados detallados

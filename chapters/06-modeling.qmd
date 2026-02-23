@@ -1,0 +1,24 @@
+---
+title: "Modelado Predictivo"
+---
+
+## 6.1 Definición de Recipe y Workflow
+
+- **Recipe**: imputaciones, escalado, `step_log(all_outcomes())`, conversión de factores.  
+- **Modelos** a evaluar:  
+  - Regresión lineal múltiple  
+  - Random Forest  
+  - Gradient Boosting  
+
+```{r}
+# placeholder: definición de recipe y workflow con parsnip
+```
+
+## 6.2 Validación y Tuning
+
+* Validación cruzada k-fold (v = 5).
+* Grid search de hiperparámetros (ej.: mtry, min\_n).
+
+```{r}
+# placeholder: fit_resamples()
+```

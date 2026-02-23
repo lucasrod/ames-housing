@@ -1,0 +1,412 @@
+---
+title: "Diagnóstico y limpieza de datos"
+subtitle: Diagnóstico de calidad, recodificaciones y creación del primer objeto limpio para análisis posterior
+---
+
+```{r}
+#| include: false
+#| label: dependencies
+library(modeldata)  # Conjunto Ames housing
+# library(tidymodels) # ML
+# library(skimr)      # Análisis descriptivo
+# library(e1071)      # Para asimetría y curtosis
+# library(robustbase) # Para medcouple
+
+# Medcouple es un estadístico no paramétrico y robusto que mide la asimetría del "cuerpo central" de la distribución, sin verse afectado por outliers.
+```
+
+```{r}
+#| label: register-clean
+#| cache: FALSE
+knitr::read_chunk("../scripts/data-cleaning.R")
+```
+
+## Contexto y motivación
+
+El tratamiento de valores faltantes es una etapa clave del preprocesamiento en proyectos de datos. Los datos faltantes afectan la validez de los patrones descubiertos, la capacidad de generalización de los modelos y pueden introducir sesgos importantes en los resultados. Aunque este conjunto no contiene valores explícitamente faltantes (NAs), sí presenta múltiples codificaciones implícitas que señalan ausencia estructural (p. ej., ceros estructurales y niveles categóricos especiales como `"None"` o `"No_*"`). Por tanto, es crucial realizar una limpieza y recodificación adecuada para garantizar la integridad y calidad del análisis posterior.c
+
+## Decisiones de limpieza implementadas según De Cock
+
+La versión curada del paquete `modeldata::ames` ya incluye varias depuraciones documentadas por De Cock (2011). En particular:
+
+- Conserva exclusivamente ventas residenciales únicas (2930 registros sin duplicados).
+- Elimina variables internas de tasación irrelevantes y otras fuertemente colineales con el precio.
+- Adopta etiquetas legibles para abreviaciones crípticas en factores (p.ej., `"Typ"` a `"Typical"`).
+
+Sin embargo, **no implementa** algunas recomendaciones clave, como eliminar casos extremos (`Gr_Liv_Area > 4000 sqft`) o tratar explícitamente codificaciones estructurales de ausencia en variables numéricas y categóricas.
+
+## Decisiones de limpieza según otros análisis existentes
+
+Tras revisar otros análisis del conjunto Ames, observamos algunas prácticas frecuentes:
+
+- **Eliminación de columnas irrelevantes**: las cuales ya se han descartado en `{modeldata}`.
+- **Detección y codificación explícita de NA**: otros análisis imputan mediana o moda para valores originalmente codificados como `?`. Nosotros inferimos que estos valores fueron recodificados previamente como `0` o `"None"`.
+- **Tratamiento de outliers**: una práctica común es descartar viviendas extremadamente grandes (`Gr_Liv_Area > 4000 sqft`).
+
+## Objetivos y procedimiento de limpieza
+
+A partir del diagnóstico inicial, se han identificado que la versión del conjunto de datos Ames provista por `{modeldata}` requiere intervención adicional. Aunque la limpieza inicial documentada por De Cock (2011) resuelve aspectos críticos como filtrado residencial único y la eliminación de variables irrelevantes, persisten ciertos aspectos pendientes.
+
+El propósito de este capítulo es documentar y ejecutar estas acciones de limpieza adicionales, garantizando la coherencia y trazabilidad necesarias para el análisis posterior.
+
+En concreto, las acciones específicas a realizar son:
+
+### Tratamiento explícito de ausencias estructurales en variables categóricas
+
+El conjunto Ames codifica implícitamente la ausencia estructural mediante niveles categóricos especiales (`"None"`, `"No_*"`). Mantener estas codificaciones sin tratamiento explícito podría sesgar análisis posteriores.
+
+Acciones específicas:
+
+  - Detectar sistemáticamente estos niveles especiales y convertirlos en valores faltantes (`NA`) cuando corresponda.
+  - Crear variables indicadoras binarias (`has_*`) para preservar información útil sobre la presencia o ausencia de componentes estructurales, como garajes o sótanos.
+
+### Recodificación de ceros estructurales en variables numéricas
+
+Algunas variables numéricas (ej., área de garaje o sótano) contienen valores iguales a `0` que indican ausencia estructural y no mediciones reales de magnitud. Ignorar esto distorsiona estadísticas descriptivas y modelos predictivos.
+
+Acciones específicas:
+
+  - Identificar variables numéricas con alta proporción de ceros estructurales o discrepancias categórico-numéricas claras.
+  - Transformar estos ceros explícitamente en valores faltantes (`NA`), complementando con variables indicadoras para evitar pérdida de información relevante.
+
+### Armonización de variables categóricas-numéricas emparejadas
+
+Existen inconsistencias internas en variables emparejadas, donde una categoría indica presencia de un componente, pero su valor numérico asociado está en cero o viceversa.
+
+Acciones específicas:
+
+  - Verificar y corregir estas discrepancias mediante reglas de decisión lógicas, mejorando así la calidad y consistencia interna del conjunto.
+
+### Creación del objeto limpio `ames_clean`
+
+Establecer una base limpia, documentada y reproducible del dataset para facilitar su uso en análisis exploratorios avanzados y modelos predictivos posteriores.
+
+Acciones específicas:
+
+  - Ejecutar todas las transformaciones anteriores de forma secuencial y almacenar el resultado en un nuevo objeto (`ames_clean`).
+  - Documentar metadatos relevantes (proporciones de ceros, transformaciones realizadas) en tablas accesibles.
+
+### Resumen integrado del estado inicial y acciones complementarias a implementar
+
+La siguiente tabla resume de forma integrada las acciones realizadas previamente por `{modeldata}` y las tareas adicionales descritas en este capítulo:
+
+| Procedimiento                                              | Aplicado en `{modeldata}` | Aplicado en este informe |
+| ---------------------------------------------------------- | ------------------------- | ------------------------ |
+| Filtrado residencial unifamiliar                           | ✅ Sí                      | ✅ Sí (ya realizado)      |
+| Filtrado ventas duplicadas (PID)                           | ✅ Sí                      | ✅ Sí (ya realizado)      |
+| Eliminación columnas irrelevantes (tasación interna)       | ✅ Sí                      | ✅ Sí (ya realizado)      |
+| Transformación ceros estructurales numéricos en `NA`       | ❌ No                      | ✅ Sí                     |
+| Codificación niveles categóricos 'None'/'No\_\*' como `NA` | ❌ No                      | ✅ Sí                     |
+| Indicadores binarios de presencia (`has_*`)                | ❌ No                      | ✅ Sí                     |
+| Armonización variables categórico-numéricas emparejadas    | ❌ No                      | ✅ Sí                     |
+
+Este resumen permite establecer una hoja de ruta clara, facilitando la transparencia y replicabilidad de los procedimientos aplicados.
+
+### Carga inicial de datos
+
+El punto de partida es la importación y almacenamiento del conjunto original `ames_raw` (2 930 filas, 74 columnas), junto con el diccionario de variables adaptado para referencia constante durante las tareas subsecuentes.
+
+```{r}
+#| label: load-data
+# Cargar el conjunto Ames y el diccionario de variables
+data(ames)
+ames_raw <- as_tibble(ames)
+
+ames_dict <- read_csv("../data/data-dictionary.csv", show_col_types = FALSE) %>%
+  # renombramos las columnas del CSV a nuestro esquema interno
+  rename(
+    description    = description,
+    tipo_semantico = type
+  ) %>%
+  select(variable, description, tipo_semantico)
+```
+
+{{< embed 10-tbl-appendix.qmd#tbl-metrics-global echo=TRUE >}}
+
+Las acciones posteriores se realizarán partiendo de esta versión cruda, documentando cada decisión y transformación explícitamente.
+
+## Ceros estructurales en variables numéricas
+
+En ciertos casos, un valor numérico igual a `0` no representa una medición legítima de magnitud nula, sino que funciona como indicador codificado de ausencia estructural. Es decir, el cero no significa “cero metros cuadrados”, “cero baños” o “cero dólares gastados”, sino que la observación **no posee ese componente** (ej. no tiene sótano, piscina o cochera).
+
+Este patrón es común en variables numéricas de componentes opcionales o no universales, como:
+
+-   `Garage_Area`, `Garage_Cars` → ausencia de garage
+-   `Total_Bsmt_SF`, `Bsmt_Full_Bath` → ausencia de sótano
+-   `Pool_Area` → ausencia de piscina
+-   `Mas_Vnr_Area` → ausencia de revestimiento exterior
+
+Estos ceros estructurales tienen implicancias importantes:
+
+-   No deben interpretarse como valores válidos de una escala cuantitativa.
+-   Si no se identifican, afectan los estadísticos descriptivos (media, varianza, asimetría), la distribución y los modelos predictivos (al inducir bimodalidad artificial o complicar transformaciones logarítmicas).
+-   Son valores candidatos naturales a transformarse en NA, acompañados por indicadores binarios derivados (`has_pool`, `has_garage`, etc.).
+
+La siguiente tabla muestra las variables numéricas más afectadas por ceros estructurales, ordenadas por su proporción de ceros observados (véase la lista completa de proporciones de ceros en el Apéndice @tbl-zeros):
+
+```{r}
+#| label: zeros-structural
+# Proporción de ceros en variables numéricas (ausencias estructurales)
+create_zero_proportion_table(ames_dict, ames_raw, top_n = 15)
+```
+
+### Limpieza de ceros
+
+Tras revisar la distribución de ceros y las discrepancias categóricas relacionadas, tomamos decisiones informadas sobre qué variables deben convertir sus ceros a `NA` y cuáles mantenerlos como valores legítimos.
+
+### Variables numéricas cuyos ceros se convirtieron a `NA`
+
+Transformamos los ceros a `NA` para aquellas variables que cumplen al menos uno de los siguientes criterios:
+
+- Tienen un porcentaje de ceros muy elevado (>50%), indicando clara ausencia estructural.
+- Han presentado discrepancias explícitas con variables categóricas asociadas.
+- El cero claramente no tiene significado cuantitativo real.
+
+| Variable                 | Justificación                                           |
+| ------------------------ | ------------------------------------------------------------ |
+| **`Pool_Area`**          | 99.56% ceros, ausencia estructural de piscina                |
+| **`Three_season_porch`** | 98.74% ceros, ausencia estructural de porche 3 estaciones    |
+| **`Misc_Val`**           | 96.48% ceros, discrepancias confirmadas con `Misc_Feature`   |
+| **`Bsmt_Half_Bath`**     | 94.03% ceros, ausencia estructural de baños en sótano        |
+| **`Screen_Porch`**       | 91.26% ceros, ausencia estructural de porche mosquitero      |
+| **`BsmtFin_SF_2`**       | 88.02% ceros, área secundaria terminada en sótano opcional   |
+| **`Enclosed_Porch`**     | 84.33% ceros, ausencia estructural de porche cerrado         |
+| **`Mas_Vnr_Area`**       | 60.44% ceros, discrepancias confirmadas con `Mas_Vnr_Type`   |
+| **`Bsmt_Full_Bath`**     | 58.33% ceros, ausencia estructural baños completos en sótano |
+| **`Wood_Deck_SF`**       | 52.08% ceros, ausencia estructural de deck exterior          |
+| **`Lot_Frontage`**       | 16.72% ceros, cero indica falta de medición|
+| **`Garage_Area`**        | 5.39% ceros, discrepancias confirmadas con `Garage_Type`     |
+| **`Garage_Cars`**        | 5.39% ceros, asociado directamente con `Garage_Area`         |
+
+
+Implementamos esta transformación mediante:
+
+```{r}
+#| label: convert-structural-zeros
+```
+
+```{r}
+#| label: structural-zero-clean
+#| tbl-cap: "Resumen de recodificaciones por variable"
+#| cache: FALSE
+
+structural_zero_vars <- c(
+  "Pool_Area", "Three_season_porch", "Misc_Val", "Bsmt_Half_Bath",
+  "Screen_Porch", "BsmtFin_SF_2", "Enclosed_Porch", "Mas_Vnr_Area",
+  "Bsmt_Full_Bath", "Wood_Deck_SF", "Garage_Area", "Garage_Cars", "Lot_Frontage"
+)
+
+ames1 <- convert_structural_zeros_to_na(ames_raw, zero_vars = structural_zero_vars)
+
+attr(ames1, "zero_summary") %>% knitr::kable()
+```
+
+### Variables cuyos ceros conservamos (como valores legítimos)
+
+En contraste, conservamos los ceros para aquellas variables numéricas donde:
+
+- El cero representa un valor válido dentro de la escala de medición.
+- El porcentaje de ceros es moderado o bajo.
+- No existen discrepancias categóricas que sugieran que sean ausencias estructurales.
+
+Específicamente, mantenemos los ceros en las siguientes variables:
+
+| Variable            | Justificación de conservar el cero            |
+| ------------------- | ------------------------------------------------------------------- |
+| **`Second_Flr_SF`** | Área del segundo piso                                               |
+| **`Fireplaces`**    | Casas sin chimenea (valor real y común: 48.53%)                     |
+| **`Open_Porch_SF`** | Casas sin porche abierto (44.37%, pero legítimo)                    |
+| **`Half_Bath`**     | Casas sin medios baños sobre nivel del suelo (62.90%, legítimo)     |
+| **`Bsmt_Unf_SF`**   | Área del sótano totalmente terminada (0 pies² sin terminar: 8.36%)  |
+| **`Full_Bath`**     | Casas muy pequeñas sin baño completo (0.41%, poco frecuente)        |
+| **`Bedroom_AbvGr`** | Casas sin dormitorios sobre nivel del suelo (muy raro, pero válido) |
+| **`Kitchen_AbvGr`** | Casas sin cocina sobre nivel del suelo (muy raro, pero posible)     |
+| **`BsmtFin_SF_1`**  | Área tipo 1 del sótano totalmente sin terminar (0.03%, posible)     |
+
+Estas variables mantienen los ceros, ya que su eliminación podría generar sesgos innecesarios o eliminar información valiosa del modelo predictivo.
+
+### Creación de indicadores binarios a partir de variables numéricas
+```{r}
+#| label: create-has-num-indicators
+#| cache: FALSE
+```
+
+```{r}
+#| label: add-has-num-indicators
+#| tbl-cap: "Resumen de indicadores binarios"
+#| cache: FALSE
+
+num_vars <- c("Second_Flr_SF", "Fireplaces")
+
+ames2 <- create_has_num_indicators(ames1, num_vars, threshold = 0)
+
+attr(ames2, "has_num_summary") %>% knitr::kable()
+```
+
+## Ausencia estructural en variables categóricas
+
+Como vimos previamente, cada nivel de un factor representa una categoría posible dentro de la variable. Sin embargo, en la práctica de análisis de datos reales, no todos los niveles representan categorías sustantivas del fenómeno.
+
+Un subconjunto importante de niveles corresponde a lo que denominamos **ausencias estructurales**: son valores codificados explícitamente para señalar la falta de una característica o componente en una observación determinada. Ejemplos clásicos en el dataset Ames Housing son `"None"`, `"No_Garage"`, `"No_Basement"`, `"No_Fence"` o `"No_Pool"`.
+
+Aunque estos valores aparecen como niveles válidos del factor, **no deberían ser tratados como categorías sustantivas**, ya que no representan una cualidad distinta dentro del universo de casos, sino la ausencia misma de la característica relevante. Esto tiene implicancias directas para el modelado y la visualización:
+
+-   Si se usan sin transformar, los algoritmos estadísticos y de machine learning los tratarán como clases válidas.
+-   Esto puede introducir sesgos, malinterpretaciones o sobreajustes, especialmente en modelos que utilizan codificaciones dummies o árboles de decisión.
+
+En contraposición a los niveles categóricos regulares, identificaremos las **Codificaciones especiales**, que deben ser recodificadas como `NA`, convertidas a indicadores binarios (`has_feature`) o interpretadas como "ausencia de componente" según el contexto.
+
+```{r}
+#| label: categorical-absence
+#| tbl-cap: "Codificaciones especiales de variables categóricas"
+
+create_cat_absence_table(ames_dict, ames1)
+```
+
+> **Nota:** La tabla anterior muestra todos los casos donde la codificación estructural (`None`, `No_*`) aparece como nivel. Esta información es importante para aplicar reglas de limpieza e imputación antes del modelado.
+
+## Análisis de ausencias combinadas
+
+A continuación exploramos pares de variables categóricas (`cat_var`) y numéricas (`num_var`) que presentan un comportamiento estructural conjunto. En estos casos, el valor `"None"` en la variable categórica suele coincidir con un valor `0` en la numérica, lo que refuerza la interpretación del cero como indicador de ausencia de la característica.
+
+{{< embed 10-tbl-appendix.qmd#tbl-absence-pair echo=TRUE >}}
+
+> Esta tabla permite verificar la consistencia interna del dataset y orientar decisiones de ingeniería de variables, especialmente para `Garage_Area`, `Total_Bsmt_SF` y `Mas_Vnr_Area`, que presentan asociaciones estructurales claras con variables categóricas y alta correlación con `Sale_Price`.
+
+### Discrepancia: presente pero cero
+
+Casos donde la variable categórica indica que existe una característica (por ejemplo, un garaje o un revestimiento), pero la variable numérica correspondiente tiene valor igual a cero, lo que es inconsistente con esa afirmación.
+
+{{< embed 10-tbl-appendix.qmd#tbl-present-but-zero echo=TRUE >}}
+
+Este tipo de discrepancias subestima el valor real de las características, distorsiona estadísticas descriptivas, y pueden introducir errores sistemáticos en los modelos, especialmente si se usan transformaciones logarítmicas o medidas de tendencia central.
+
+> Tal como hemos hecho en la sección de limpieza de ceros, conservamos la etiqueta categórica y convertimos el 0 a NA (ausencia implícita).
+
+### Discrepancia: ausente pero positivo
+
+En este segundo grupo, la variable categórica señala explícitamente que el componente está ausente (por ejemplo, `"No_Garage"` o `"None"`), pero la variable numérica correspondiente tiene un valor positivo, lo que contradice esa ausencia.
+
+{{< embed 10-tbl-appendix.qmd#tbl-absent-but-positive echo=TRUE >}}
+
+> Para estos casos, recodificamos `cat` como `"Other"` (o el nivel más frecuente distinto de ausencia) y **mantenemos** el valor numérico.
+
+## Corrección de codificaciones en variables categóricas
+
+### Limpieza de pares
+```{r}
+#| label: recode-categorical-absence
+#| cache: FALSE
+```
+
+```{r}
+#| label: clean-structural-pairs
+#| cache: FALSE
+#| tbl-cap: "Resumen de recodificaciones por variable"
+none_levels <- c("None", "No_Alley_Access", "No_Pool",
+                 "No_Fence", "No_Garage", "No_Basement")
+
+pares <- list(
+  c("Garage_Type",   "Garage_Area"),
+  c("Garage_Cond",   "Garage_Area"),
+  c("Bsmt_Cond",     "Total_Bsmt_SF"),
+  c("Bsmt_Exposure", "Total_Bsmt_SF"),
+  c("Pool_QC",       "Pool_Area"),
+  c("Mas_Vnr_Type",  "Mas_Vnr_Area"),
+  c("Misc_Feature",  "Misc_Val")
+)
+
+ames3 <- recode_categorical_absence(ames2, pares, none_levels)
+
+attr(ames3, "recode_summary") %>% knitr::kable()
+```
+
+### Creación de indicadores binarios a partir de variables categóricas
+```{r}
+#| label: create-has-indicators
+#| cache: FALSE
+```
+
+```{r}
+#| label: add-has-indicators
+#| tbl-cap: "Resumen de indicadores binarios"
+#| cache: FALSE
+
+cat_vars <- c("Pool_QC", "Mas_Vnr_Type", "Garage_Cond",
+              "Bsmt_Cond", "Fence", "Alley")
+
+ames_clean <- create_has_indicators(ames3, cat_vars, none_levels)
+
+attr(ames_clean, "has_summary") %>% knitr::kable()
+```
+
+### Guardado del objeto limpio
+
+```{r}
+#| label: save-clean-object
+# Guardamos para uso posterior
+write_rds(ames_clean, "../data/ames_clean.rds")
+```
+
+<!--
+
+## Verificación
+
+```{r}
+#| label: reload-ames-clean
+rm(ames_clean)  # Elimina el objeto de la memoria
+gc()            # Limpia la memoria
+ames_clean <- readr::read_rds("../data/ames_clean.rds")
+```
+
+### Revisar que no queden NAs inesperados
+
+```{r}
+#| label: check-nas
+library(tidyverse)
+ames_clean %>% 
+  summarise(across(everything(), ~ sum(is.na(.)))) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "n_na") %>% 
+  filter(n_na > 0) %>% 
+  knitr::kable(
+    caption = "Variables con NAs tras la limpieza"
+  )
+```
+
+> Solamente esperamos encontrar los `NA` que generamos intencionalmente (ceros estructurales).
+
+### Comprobar clases y niveles de factor
+
+```{r}
+#| label: check-classes-and-levels
+#| tbl-cap: "Clases y niveles de las primeras 10 variables en ames_clean"
+tibble(
+  variable = names(ames_clean),
+  clase    = map_chr(ames_clean, ~ class(.x)[1]),
+  n_levels = map_int(ames_clean, ~ if(is.factor(.x)) nlevels(.x) else NA_integer_)
+) %>% 
+  slice_head(n = 10) %>%
+  knitr::kable()
+```
+
+-->
+
+## Resúmen de acciones de limpieza
+
+-   **Alineación categórica–numérica**
+    -   Si `cat ∈ none_levels` **y** `num > 0` → recodificamos `cat` como `"Other"` (o el nivel más frecuente distinto de ausencia) y **mantenemos** el valor numérico.\
+    -   Si `cat ∉ none_levels` **y** `num == 0` → conservamos la etiqueta categórica y convertimos `num` a `NA` (ausencia implícita).
+-   **Conversión de ceros estructurales a `NA`**
+    -   Para todo par coherente (`cat = None`, `num = 0`) transformamos `num = NA`.\
+    -   Esto evita que los ceros contaminen estadísticas descriptivas y distribuciones.
+-   **Indicadores binarios de presencia**
+    -   Para cada par creamos `has_<feature>` = 1 si `cat ∉ none_levels`, 0 en caso contrario.\
+    -   Ejemplos: `has_garage`, `has_basement`, `has_pool`, `has_masnry`, `has_misc`.
+
+## Conclusiones de esta fase
+
+-   **Coherencia garantizada** entre codificaciones de ausencia categóricas y ceros numéricos.
+-   **Indicadores binarios** (`has_*`) listos para modelos que distingan presencia/ausencia sin perder granularidad.
+-   **Valores numéricos informativos** preservados cuando existían mediciones \> 0.
+
+El dataset resultante `ames_clean` es la base a emplear en los capítulos siguientes sobre exploración, ingeniería de features y modelado predictivo.

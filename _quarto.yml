@@ -1,0 +1,56 @@
+project:
+  type: book
+resources:
+  - csl/chicago-fullnote-with-ibid.csl
+  - data/data-dictionary.csv
+book:
+  title: "Análisis del Mercado Inmobiliario en Ames, Iowa"
+  subtitle: "CDR, FCEA-UdelaR"
+  author:
+    - Lucas Rodriguez
+  date: "6/28/2025"
+  output-file: "Informe_Ames_Housing"
+  chapters:
+    - index.qmd
+    - chapters/01-introduction.qmd
+    - chapters/02-data-description.qmd
+    - chapters/03-data-cleaning.qmd
+    - chapters/04-transformations.qmd
+    - chapters/05-eda.qmd
+    - chapters/06-modeling.qmd
+    - chapters/07-clustering.qmd
+    - chapters/08-conclusions.qmd
+  appendices:
+    - chapters/09-data-dictionary.qmd
+    - chapters/10-tbl-appendix.qmd
+    - chapters/references.qmd
+
+bibliography: references.bib
+csl: csl/chicago-fullnote-with-ibid.csl
+citation-location: margin
+crossref:
+  # Para figuras (opcional)
+  fig-title: "Figura"
+  fig-prefix: "figura"
+  # Para tablas
+  tbl-title: "Tabla"
+  tbl-prefix: "tabla"
+  # Delimitador tras "Tabla A.1"
+  title-delim: ":"
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    code-summary: "Mostrar código"
+    theme:
+      - cosmo
+      - brand
+    # self-contained: true
+
+execute:
+  echo:    true
+  warning: true
+  message: false

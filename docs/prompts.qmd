@@ -1,0 +1,1674 @@
+---
+title: "Prompts ChatGPT"
+---
+
+# Prompt: This is a placeholder
+
+decime especificamente, que partes de mi analisis monolítico debo incluir en chapters/03-data-cleaning.qmd? Presta atención que estamos desacoplando el análisis monolítico como capitulos de un proyecto quarto de tipo book.
+
+El analisis monolítico:
+Paneo Inicial y Diagnóstico de Calidad
+
+Realizamos un diagnóstico inicial del conjunto de datos ames cargado desde el paquete {modeldata}. Exploraremos su estructura, tipos de variables, codificaciones especiales, presencia de valores faltantes (missing values), ausencia estructural y duplicados.
+
+# Cargar el conjunto ames
+data(ames)
+ames_data <- as_tibble(ames)
+
+Estructura
+glimpse(ames_data)
+
+Rows: 2,930
+Columns: 74
+$ MS_SubClass        <fct> One_Story_1946_and_Newer_All_Styles, One_Story_1946…
+$ MS_Zoning          <fct> Residential_Low_Density, Residential_High_Density, …
+$ Lot_Frontage       <dbl> 141, 80, 81, 93, 74, 78, 41, 43, 39, 60, 75, 0, 63,…
+$ Lot_Area           <int> 31770, 11622, 14267, 11160, 13830, 9978, 4920, 5005…
+$ Street             <fct> Pave, Pave, Pave, Pave, Pave, Pave, Pave, Pave, Pav…
+$ Alley              <fct> No_Alley_Access, No_Alley_Access, No_Alley_Access, …
+$ Lot_Shape          <fct> Slightly_Irregular, Regular, Slightly_Irregular, Re…
+$ Land_Contour       <fct> Lvl, Lvl, Lvl, Lvl, Lvl, Lvl, Lvl, HLS, Lvl, Lvl, L…
+$ Utilities          <fct> AllPub, AllPub, AllPub, AllPub, AllPub, AllPub, All…
+$ Lot_Config         <fct> Corner, Inside, Corner, Corner, Inside, Inside, Ins…
+$ Land_Slope         <fct> Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, G…
+$ Neighborhood       <fct> North_Ames, North_Ames, North_Ames, North_Ames, Gil…
+$ Condition_1        <fct> Norm, Feedr, Norm, Norm, Norm, Norm, Norm, Norm, No…
+$ Condition_2        <fct> Norm, Norm, Norm, Norm, Norm, Norm, Norm, Norm, Nor…
+$ Bldg_Type          <fct> OneFam, OneFam, OneFam, OneFam, OneFam, OneFam, Twn…
+$ House_Style        <fct> One_Story, One_Story, One_Story, One_Story, Two_Sto…
+$ Overall_Cond       <fct> Average, Above_Average, Above_Average, Average, Ave…
+$ Year_Built         <int> 1960, 1961, 1958, 1968, 1997, 1998, 2001, 1992, 199…
+$ Year_Remod_Add     <int> 1960, 1961, 1958, 1968, 1998, 1998, 2001, 1992, 199…
+$ Roof_Style         <fct> Hip, Gable, Hip, Hip, Gable, Gable, Gable, Gable, G…
+$ Roof_Matl          <fct> CompShg, CompShg, CompShg, CompShg, CompShg, CompSh…
+$ Exterior_1st       <fct> BrkFace, VinylSd, Wd Sdng, BrkFace, VinylSd, VinylS…
+$ Exterior_2nd       <fct> Plywood, VinylSd, Wd Sdng, BrkFace, VinylSd, VinylS…
+$ Mas_Vnr_Type       <fct> Stone, None, BrkFace, None, None, BrkFace, None, No…
+$ Mas_Vnr_Area       <dbl> 112, 0, 108, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6…
+$ Exter_Cond         <fct> Typical, Typical, Typical, Typical, Typical, Typica…
+$ Foundation         <fct> CBlock, CBlock, CBlock, CBlock, PConc, PConc, PConc…
+$ Bsmt_Cond          <fct> Good, Typical, Typical, Typical, Typical, Typical, …
+$ Bsmt_Exposure      <fct> Gd, No, No, No, No, No, Mn, No, No, No, No, No, No,…
+$ BsmtFin_Type_1     <fct> BLQ, Rec, ALQ, ALQ, GLQ, GLQ, GLQ, ALQ, GLQ, Unf, U…
+$ BsmtFin_SF_1       <dbl> 2, 6, 1, 1, 3, 3, 3, 1, 3, 7, 7, 1, 7, 3, 3, 1, 3, …
+$ BsmtFin_Type_2     <fct> Unf, LwQ, Unf, Unf, Unf, Unf, Unf, Unf, Unf, Unf, U…
+$ BsmtFin_SF_2       <dbl> 0, 144, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1120, 0…
+$ Bsmt_Unf_SF        <dbl> 441, 270, 406, 1045, 137, 324, 722, 1017, 415, 994,…
+$ Total_Bsmt_SF      <dbl> 1080, 882, 1329, 2110, 928, 926, 1338, 1280, 1595, …
+$ Heating            <fct> GasA, GasA, GasA, GasA, GasA, GasA, GasA, GasA, Gas…
+$ Heating_QC         <fct> Fair, Typical, Typical, Excellent, Good, Excellent,…
+$ Central_Air        <fct> Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, …
+$ Electrical         <fct> SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SB…
+$ First_Flr_SF       <int> 1656, 896, 1329, 2110, 928, 926, 1338, 1280, 1616, …
+$ Second_Flr_SF      <int> 0, 0, 0, 0, 701, 678, 0, 0, 0, 776, 892, 0, 676, 0,…
+$ Gr_Liv_Area        <int> 1656, 896, 1329, 2110, 1629, 1604, 1338, 1280, 1616…
+$ Bsmt_Full_Bath     <dbl> 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, …
+$ Bsmt_Half_Bath     <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Full_Bath          <int> 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 2, …
+$ Half_Bath          <int> 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, …
+$ Bedroom_AbvGr      <int> 3, 2, 3, 3, 3, 3, 2, 2, 2, 3, 3, 3, 3, 2, 1, 4, 4, …
+$ Kitchen_AbvGr      <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+$ TotRms_AbvGrd      <int> 7, 5, 6, 8, 6, 7, 6, 5, 5, 7, 7, 6, 7, 5, 4, 12, 8,…
+$ Functional         <fct> Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, T…
+$ Fireplaces         <int> 2, 0, 0, 2, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, …
+$ Garage_Type        <fct> Attchd, Attchd, Attchd, Attchd, Attchd, Attchd, Att…
+$ Garage_Finish      <fct> Fin, Unf, Unf, Fin, Fin, Fin, Fin, RFn, RFn, Fin, F…
+$ Garage_Cars        <dbl> 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, …
+$ Garage_Area        <dbl> 528, 730, 312, 522, 482, 470, 582, 506, 608, 442, 4…
+$ Garage_Cond        <fct> Typical, Typical, Typical, Typical, Typical, Typica…
+$ Paved_Drive        <fct> Partial_Pavement, Paved, Paved, Paved, Paved, Paved…
+$ Wood_Deck_SF       <int> 210, 140, 393, 0, 212, 360, 0, 0, 237, 140, 157, 48…
+$ Open_Porch_SF      <int> 62, 0, 36, 0, 34, 36, 0, 82, 152, 60, 84, 21, 75, 0…
+$ Enclosed_Porch     <int> 0, 0, 0, 0, 0, 0, 170, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ Three_season_porch <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Screen_Porch       <int> 0, 120, 0, 0, 0, 0, 0, 144, 0, 0, 0, 0, 0, 0, 140, …
+$ Pool_Area          <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Pool_QC            <fct> No_Pool, No_Pool, No_Pool, No_Pool, No_Pool, No_Poo…
+$ Fence              <fct> No_Fence, Minimum_Privacy, No_Fence, No_Fence, Mini…
+$ Misc_Feature       <fct> None, None, Gar2, None, None, None, None, None, Non…
+$ Misc_Val           <int> 0, 0, 12500, 0, 0, 0, 0, 0, 0, 0, 0, 500, 0, 0, 0, …
+$ Mo_Sold            <int> 5, 6, 6, 4, 3, 6, 4, 1, 3, 6, 4, 3, 5, 2, 6, 6, 6, …
+$ Year_Sold          <int> 2010, 2010, 2010, 2010, 2010, 2010, 2010, 2010, 201…
+$ Sale_Type          <fct> WD , WD , WD , WD , WD , WD , WD , WD , WD , WD , W…
+$ Sale_Condition     <fct> Normal, Normal, Normal, Normal, Normal, Normal, Nor…
+$ Sale_Price         <int> 215000, 105000, 172000, 244000, 189900, 195500, 213…
+$ Longitude          <dbl> -93.61975, -93.61976, -93.61939, -93.61732, -93.638…
+$ Latitude           <dbl> 42.05403, 42.05301, 42.05266, 42.05125, 42.06090, 4…
+Análisis descriptivo univariado
+Diferenciamos entre variables numéricas y categóricas, y para cada tipo se presentan estadísticos de resumen, distribución, y niveles o codificaciones relevantes, útil para detectar problemas tempranos.
+
+Clases de variables
+Este análisis se desarrolla en R base + tidyverse, que emplean el sistema de clases S3. Durante este informe nos referiremos indistinguiblemente a los tipos de variables como a las clases. Aunque especificamente, usaremos class() para obtener las clases de variables que son un tipo semántico y typeof() para obtener el tipo de dato de R que es un tipo primitivo.
+
+# Conteo de clases
+ames_data %>%
+  summarise(across(everything(), class)) %>%
+  pivot_longer(cols = everything(), names_to = "n_variables", values_to = "class") %>%
+  count(class, name = "n_variables") %>%
+  knitr::kable(caption = "Distribución de clases de variables")
+
+Distribución de clases de variables
+class	n_variables
+factor	40
+integer	22
+numeric	12
+Notas:
+
+Las clases se asignan automáticamente por R al importar los datos.
+
+Si consultamos el tipo primitivo que informa typeof():
+
+Los vectores de clase numeric se almacenan como "double"
+Los vectores de clase factor se almacenan como "integer".
+Clase Factor
+Las clases factor son variables categóricas codificadas o enumeradas como enteros con sus niveles asociados.
+
+Clases Numéricas
+Identificamos las variables numéricas por su clase en R (integer o numeric) y por su naturaleza semántica como discretas (si todos sus valores son enteros) o continuas (si contienen decimales). Esta clasificación no siempre coincide con el tipo primitivo de dato (double o integer) asignado automáticamente por el parser de R.
+
+A su vez, calculamos la cardinalidad de cada variable, es decir, la cantidad de valores únicos observados. Este número resulta fundamental para distinguir entre variables que podrían recodificarse como factores (baja cardinalidad discreta) y aquellas que deben tratarse como numéricas en sentido estricto.
+
+num_vars <- ames_data %>% select(where(is.numeric))
+
+numeric_classification <- tibble(
+  variable    = names(num_vars),
+  clase       = map_chr(variable, ~ class(ames_data[[.x]])[1]),
+  is_discrete = map_lgl(variable, ~ all(ames_data[[.x]] == floor(ames_data[[.x]]), na.rm = TRUE))
+) %>%
+  mutate(
+    tipo        = if_else(is_discrete, "Discreta", "Continua"),
+    cardinalidad = map_int(variable, ~ n_distinct(ames_data[[.x]], na.rm = TRUE))
+  ) %>%
+  select(variable, clase, tipo, cardinalidad)
+
+knitr::kable(
+  numeric_classification %>% arrange(tipo, cardinalidad),
+  caption = "Clasificación semántica de variables numéricas con cardinalidad"
+)
+
+Clasificación semántica de variables numéricas con cardinalidad
+variable	clase	tipo	cardinalidad
+Latitude	numeric	Continua	2762
+Longitude	numeric	Continua	2777
+Bsmt_Half_Bath	numeric	Discreta	3
+Half_Bath	integer	Discreta	3
+Bsmt_Full_Bath	numeric	Discreta	4
+Kitchen_AbvGr	integer	Discreta	4
+Full_Bath	integer	Discreta	5
+Fireplaces	integer	Discreta	5
+Year_Sold	integer	Discreta	5
+Garage_Cars	numeric	Discreta	6
+BsmtFin_SF_1	numeric	Discreta	8
+Bedroom_AbvGr	integer	Discreta	8
+Mo_Sold	integer	Discreta	12
+TotRms_AbvGrd	integer	Discreta	14
+Pool_Area	integer	Discreta	14
+Three_season_porch	integer	Discreta	31
+Misc_Val	integer	Discreta	38
+Year_Remod_Add	integer	Discreta	61
+Year_Built	integer	Discreta	118
+Screen_Porch	integer	Discreta	121
+Lot_Frontage	numeric	Discreta	129
+Enclosed_Porch	integer	Discreta	183
+Open_Porch_SF	integer	Discreta	252
+BsmtFin_SF_2	numeric	Discreta	274
+Wood_Deck_SF	integer	Discreta	380
+Mas_Vnr_Area	numeric	Discreta	445
+Garage_Area	numeric	Discreta	603
+Second_Flr_SF	integer	Discreta	635
+Sale_Price	integer	Discreta	1032
+Total_Bsmt_SF	numeric	Discreta	1058
+First_Flr_SF	integer	Discreta	1083
+Bsmt_Unf_SF	numeric	Discreta	1137
+Gr_Liv_Area	integer	Discreta	1292
+Lot_Area	integer	Discreta	1960
+Nota: Observamos que variables como Garage_Cars, Bsmt_Half_Bath y Bsmt_Full_Bath son claramente numéricas discretas, pero fueron importadas como numeric (double) en vez de integer, a pesar de no tener decimales. Esta inconsistencia no afecta los cálculos pero sí debe considerarse al preparar modelos, ya que puede justificar transformar algunas de estas variables a factor u ordered.
+
+La lógica y criterios para convertir las variables numéricas discretas a factores (incluyendo la tabla de cardinalidades y las justificaciones) se han llevado a la sección Recomendaciones de preprocesamiento bajo el subtítulo Conversión de variables discretas a factores, donde encontraremos el listado completo y la acción sugerida para cada variable.
+Tipo de variable para el análisis
+Factores vs numéricos.
+
+skim_summary <- skim(ames_data)
+skim_summary %>%
+  count(skim_type, name = "n_variables") %>%
+  knitr::kable(caption = "Distribución de tipo de variables (skim_type)")
+
+Distribución de tipo de variables (skim_type)
+skim_type	n_variables
+factor	40
+numeric	34
+Variables categóricas
+Mostramos la cantidad de categorías y las categorías más observadas de las variables de tipo factor:
+
+skim_summary %>%
+  filter(skim_type == "factor") %>%
+  arrange(desc(factor.n_unique)) %>%
+  select(
+    variable    = skim_variable,
+    n_levels    = factor.n_unique,
+    top_counts  = factor.top_counts,
+  ) %>%
+  knitr::kable(
+    caption = "Variables categóricas: niveles y counts principales"
+  )
+
+Variables categóricas: niveles y counts principales
+variable	n_levels	top_counts
+Neighborhood	28	Nor: 443, Col: 267, Old: 239, Edw: 194
+Exterior_2nd	17	Vin: 1015, Met: 447, HdB: 406, Wd : 397
+MS_SubClass	16	One: 1079, Two: 575, One: 287, One: 192
+Exterior_1st	16	Vin: 1026, Met: 450, HdB: 442, Wd : 420
+Sale_Type	10	WD : 2536, New: 239, COD: 87, Con: 26
+Condition_1	9	Nor: 2522, Fee: 164, Art: 92, RRA: 50
+Overall_Cond	9	Ave: 1654, Abo: 533, Goo: 390, Ver: 144
+Condition_2	8	Nor: 2900, Fee: 13, Art: 5, Pos: 4
+House_Style	8	One: 1481, Two: 873, One: 314, SLv: 128
+Roof_Matl	8	Com: 2887, Tar: 23, WdS: 9, WdS: 7
+Functional	8	Typ: 2728, Min: 70, Min: 65, Mod: 35
+MS_Zoning	7	Res: 2273, Res: 462, Flo: 139, Res: 27
+BsmtFin_Type_1	7	GLQ: 859, Unf: 851, ALQ: 429, Rec: 288
+BsmtFin_Type_2	7	Unf: 2499, Rec: 106, LwQ: 89, No_: 81
+Garage_Type	7	Att: 1731, Det: 782, Bui: 186, No_: 157
+Roof_Style	6	Gab: 2321, Hip: 551, Gam: 22, Fla: 20
+Foundation	6	PCo: 1310, CBl: 1244, Brk: 311, Sla: 49
+Bsmt_Cond	6	Typ: 2616, Goo: 122, Fai: 104, No_: 80
+Heating	6	Gas: 2885, Gas: 27, Gra: 9, Wal: 6
+Electrical	6	SBr: 2682, Fus: 188, Fus: 50, Fus: 8
+Garage_Cond	6	Typ: 2665, No_: 159, Fai: 74, Goo: 15
+Misc_Feature	6	Non: 2824, She: 95, Gar: 5, Oth: 4
+Sale_Condition	6	Nor: 2413, Par: 245, Abn: 190, Fam: 46
+Lot_Config	5	Ins: 2140, Cor: 511, Cul: 180, FR2: 85
+Bldg_Type	5	One: 2425, Twn: 233, Dup: 109, Twn: 101
+Mas_Vnr_Type	5	Non: 1775, Brk: 880, Sto: 249, Brk: 25
+Exter_Cond	5	Typ: 2549, Goo: 299, Fai: 67, Exc: 12
+Bsmt_Exposure	5	No: 1906, Av: 418, Gd: 284, Mn: 239
+Heating_QC	5	Exc: 1495, Typ: 864, Goo: 476, Fai: 92
+Pool_QC	5	No_: 2917, Exc: 4, Goo: 4, Typ: 3
+Fence	5	No_: 2358, Min: 330, Goo: 118, Goo: 112
+Lot_Shape	4	Reg: 1859, Sli: 979, Mod: 76, Irr: 16
+Land_Contour	4	Lvl: 2633, HLS: 120, Bnk: 117, Low: 60
+Garage_Finish	4	Unf: 1231, RFn: 812, Fin: 728, No_: 159
+Alley	3	No_: 2732, Gra: 120, Pav: 78
+Utilities	3	All: 2927, NoS: 2, NoS: 1
+Land_Slope	3	Gtl: 2789, Mod: 125, Sev: 16
+Paved_Drive	3	Pav: 2652, Dir: 216, Par: 62
+Street	2	Pav: 2918, Grv: 12
+Central_Air	2	Y: 2734, N: 196
+# Cardinalidad de cada factor desde skim_summary
+cardinality <- skim_summary %>%
+  filter(skim_type == "factor") %>%
+  select(
+    variable = skim_variable,
+    n_levels = factor.n_unique
+  )
+
+# Conteo y proporciones por nivel
+factor_vars <- cardinality$variable
+
+prop_cat <- map_dfr(factor_vars, function(var) {
+  ames_data %>%
+    count(level = .data[[var]]) %>%
+    mutate(
+      variable = var,
+      prop     = percent(n / sum(n), accuracy = 0.1)
+    )
+})
+
+# Unir cardinalidad ordenando por n_levels (desc) y luego por n (desc)
+prop_cat %>%
+  left_join(cardinality, by = "variable") %>%
+  arrange(
+    desc(n_levels),  # se usa para ordenar, pero no se mostrará
+    variable,
+    desc(n)
+  ) %>%
+  select(variable, level, n, prop) %>%  # acá ya no incluimos n_levels
+  knitr::kable(
+    caption = "Distribución de niveles de variables categóricas"
+  )
+
+Distribución de niveles de variables categóricas
+variable	level	n	prop
+Neighborhood	North_Ames	443	15.1%
+Neighborhood	College_Creek	267	9.1%
+Neighborhood	Old_Town	239	8.2%
+Neighborhood	Edwards	194	6.6%
+Neighborhood	Somerset	182	6.2%
+Neighborhood	Northridge_Heights	166	5.7%
+Neighborhood	Gilbert	165	5.6%
+Neighborhood	Sawyer	151	5.2%
+Neighborhood	Northwest_Ames	131	4.5%
+Neighborhood	Sawyer_West	125	4.3%
+Neighborhood	Mitchell	114	3.9%
+Neighborhood	Brookside	108	3.7%
+Neighborhood	Crawford	103	3.5%
+Neighborhood	Iowa_DOT_and_Rail_Road	93	3.2%
+Neighborhood	Timberland	72	2.5%
+Neighborhood	Northridge	71	2.4%
+Neighborhood	Stone_Brook	51	1.7%
+Neighborhood	South_and_West_of_Iowa_State_University	48	1.6%
+Neighborhood	Clear_Creek	44	1.5%
+Neighborhood	Meadow_Village	37	1.3%
+Neighborhood	Briardale	30	1.0%
+Neighborhood	Bloomington_Heights	28	1.0%
+Neighborhood	Veenker	24	0.8%
+Neighborhood	Northpark_Villa	23	0.8%
+Neighborhood	Blueste	10	0.3%
+Neighborhood	Greens	8	0.3%
+Neighborhood	Green_Hills	2	0.1%
+Neighborhood	Landmark	1	0.0%
+Exterior_2nd	VinylSd	1015	34.6%
+Exterior_2nd	MetalSd	447	15.3%
+Exterior_2nd	HdBoard	406	13.9%
+Exterior_2nd	Wd Sdng	397	13.5%
+Exterior_2nd	Plywood	274	9.4%
+Exterior_2nd	CmentBd	126	4.3%
+Exterior_2nd	Wd Shng	81	2.8%
+Exterior_2nd	BrkFace	47	1.6%
+Exterior_2nd	Stucco	47	1.6%
+Exterior_2nd	AsbShng	38	1.3%
+Exterior_2nd	Brk Cmn	22	0.8%
+Exterior_2nd	ImStucc	15	0.5%
+Exterior_2nd	Stone	6	0.2%
+Exterior_2nd	AsphShn	4	0.1%
+Exterior_2nd	CBlock	3	0.1%
+Exterior_2nd	Other	1	0.0%
+Exterior_2nd	PreCast	1	0.0%
+Exterior_1st	VinylSd	1026	35.0%
+Exterior_1st	MetalSd	450	15.4%
+Exterior_1st	HdBoard	442	15.1%
+Exterior_1st	Wd Sdng	420	14.3%
+Exterior_1st	Plywood	221	7.5%
+Exterior_1st	CemntBd	126	4.3%
+Exterior_1st	BrkFace	88	3.0%
+Exterior_1st	WdShing	56	1.9%
+Exterior_1st	AsbShng	44	1.5%
+Exterior_1st	Stucco	43	1.5%
+Exterior_1st	BrkComm	6	0.2%
+Exterior_1st	AsphShn	2	0.1%
+Exterior_1st	CBlock	2	0.1%
+Exterior_1st	Stone	2	0.1%
+Exterior_1st	ImStucc	1	0.0%
+Exterior_1st	PreCast	1	0.0%
+MS_SubClass	One_Story_1946_and_Newer_All_Styles	1079	36.8%
+MS_SubClass	Two_Story_1946_and_Newer	575	19.6%
+MS_SubClass	One_and_Half_Story_Finished_All_Ages	287	9.8%
+MS_SubClass	One_Story_PUD_1946_and_Newer	192	6.6%
+MS_SubClass	One_Story_1945_and_Older	139	4.7%
+MS_SubClass	Two_Story_PUD_1946_and_Newer	129	4.4%
+MS_SubClass	Two_Story_1945_and_Older	128	4.4%
+MS_SubClass	Split_or_Multilevel	118	4.0%
+MS_SubClass	Duplex_All_Styles_and_Ages	109	3.7%
+MS_SubClass	Two_Family_conversion_All_Styles_and_Ages	61	2.1%
+MS_SubClass	Split_Foyer	48	1.6%
+MS_SubClass	Two_and_Half_Story_All_Ages	23	0.8%
+MS_SubClass	One_and_Half_Story_Unfinished_All_Ages	18	0.6%
+MS_SubClass	PUD_Multilevel_Split_Level_Foyer	17	0.6%
+MS_SubClass	One_Story_with_Finished_Attic_All_Ages	6	0.2%
+MS_SubClass	One_and_Half_Story_PUD_All_Ages	1	0.0%
+Sale_Type	WD	2536	86.6%
+Sale_Type	New	239	8.2%
+Sale_Type	COD	87	3.0%
+Sale_Type	ConLD	26	0.9%
+Sale_Type	CWD	12	0.4%
+Sale_Type	ConLI	9	0.3%
+Sale_Type	ConLw	8	0.3%
+Sale_Type	Oth	7	0.2%
+Sale_Type	Con	5	0.2%
+Sale_Type	VWD	1	0.0%
+Condition_1	Norm	2522	86.1%
+Condition_1	Feedr	164	5.6%
+Condition_1	Artery	92	3.1%
+Condition_1	RRAn	50	1.7%
+Condition_1	PosN	39	1.3%
+Condition_1	RRAe	28	1.0%
+Condition_1	PosA	20	0.7%
+Condition_1	RRNn	9	0.3%
+Condition_1	RRNe	6	0.2%
+Overall_Cond	Average	1654	56.5%
+Overall_Cond	Above_Average	533	18.2%
+Overall_Cond	Good	390	13.3%
+Overall_Cond	Very_Good	144	4.9%
+Overall_Cond	Below_Average	101	3.4%
+Overall_Cond	Fair	50	1.7%
+Overall_Cond	Excellent	41	1.4%
+Overall_Cond	Poor	10	0.3%
+Overall_Cond	Very_Poor	7	0.2%
+Condition_2	Norm	2900	99.0%
+Condition_2	Feedr	13	0.4%
+Condition_2	Artery	5	0.2%
+Condition_2	PosA	4	0.1%
+Condition_2	PosN	4	0.1%
+Condition_2	RRNn	2	0.1%
+Condition_2	RRAe	1	0.0%
+Condition_2	RRAn	1	0.0%
+Functional	Typ	2728	93.1%
+Functional	Min2	70	2.4%
+Functional	Min1	65	2.2%
+Functional	Mod	35	1.2%
+Functional	Maj1	19	0.6%
+Functional	Maj2	9	0.3%
+Functional	Sal	2	0.1%
+Functional	Sev	2	0.1%
+House_Style	One_Story	1481	50.5%
+House_Style	Two_Story	873	29.8%
+House_Style	One_and_Half_Fin	314	10.7%
+House_Style	SLvl	128	4.4%
+House_Style	SFoyer	83	2.8%
+House_Style	Two_and_Half_Unf	24	0.8%
+House_Style	One_and_Half_Unf	19	0.6%
+House_Style	Two_and_Half_Fin	8	0.3%
+Roof_Matl	CompShg	2887	98.5%
+Roof_Matl	Tar&Grv	23	0.8%
+Roof_Matl	WdShake	9	0.3%
+Roof_Matl	WdShngl	7	0.2%
+Roof_Matl	ClyTile	1	0.0%
+Roof_Matl	Membran	1	0.0%
+Roof_Matl	Metal	1	0.0%
+Roof_Matl	Roll	1	0.0%
+BsmtFin_Type_1	GLQ	859	29.3%
+BsmtFin_Type_1	Unf	851	29.0%
+BsmtFin_Type_1	ALQ	429	14.6%
+BsmtFin_Type_1	Rec	288	9.8%
+BsmtFin_Type_1	BLQ	269	9.2%
+BsmtFin_Type_1	LwQ	154	5.3%
+BsmtFin_Type_1	No_Basement	80	2.7%
+BsmtFin_Type_2	Unf	2499	85.3%
+BsmtFin_Type_2	Rec	106	3.6%
+BsmtFin_Type_2	LwQ	89	3.0%
+BsmtFin_Type_2	No_Basement	81	2.8%
+BsmtFin_Type_2	BLQ	68	2.3%
+BsmtFin_Type_2	ALQ	53	1.8%
+BsmtFin_Type_2	GLQ	34	1.2%
+Garage_Type	Attchd	1731	59.1%
+Garage_Type	Detchd	782	26.7%
+Garage_Type	BuiltIn	186	6.3%
+Garage_Type	No_Garage	157	5.4%
+Garage_Type	Basment	36	1.2%
+Garage_Type	More_Than_Two_Types	23	0.8%
+Garage_Type	CarPort	15	0.5%
+MS_Zoning	Residential_Low_Density	2273	77.6%
+MS_Zoning	Residential_Medium_Density	462	15.8%
+MS_Zoning	Floating_Village_Residential	139	4.7%
+MS_Zoning	Residential_High_Density	27	0.9%
+MS_Zoning	C_all	25	0.9%
+MS_Zoning	A_agr	2	0.1%
+MS_Zoning	I_all	2	0.1%
+Bsmt_Cond	Typical	2616	89.3%
+Bsmt_Cond	Good	122	4.2%
+Bsmt_Cond	Fair	104	3.5%
+Bsmt_Cond	No_Basement	80	2.7%
+Bsmt_Cond	Poor	5	0.2%
+Bsmt_Cond	Excellent	3	0.1%
+Electrical	SBrkr	2682	91.5%
+Electrical	FuseA	188	6.4%
+Electrical	FuseF	50	1.7%
+Electrical	FuseP	8	0.3%
+Electrical	Mix	1	0.0%
+Electrical	Unknown	1	0.0%
+Foundation	PConc	1310	44.7%
+Foundation	CBlock	1244	42.5%
+Foundation	BrkTil	311	10.6%
+Foundation	Slab	49	1.7%
+Foundation	Stone	11	0.4%
+Foundation	Wood	5	0.2%
+Garage_Cond	Typical	2665	91.0%
+Garage_Cond	No_Garage	159	5.4%
+Garage_Cond	Fair	74	2.5%
+Garage_Cond	Good	15	0.5%
+Garage_Cond	Poor	14	0.5%
+Garage_Cond	Excellent	3	0.1%
+Heating	GasA	2885	98.5%
+Heating	GasW	27	0.9%
+Heating	Grav	9	0.3%
+Heating	Wall	6	0.2%
+Heating	OthW	2	0.1%
+Heating	Floor	1	0.0%
+Misc_Feature	None	2824	96.4%
+Misc_Feature	Shed	95	3.2%
+Misc_Feature	Gar2	5	0.2%
+Misc_Feature	Othr	4	0.1%
+Misc_Feature	Elev	1	0.0%
+Misc_Feature	TenC	1	0.0%
+Roof_Style	Gable	2321	79.2%
+Roof_Style	Hip	551	18.8%
+Roof_Style	Gambrel	22	0.8%
+Roof_Style	Flat	20	0.7%
+Roof_Style	Mansard	11	0.4%
+Roof_Style	Shed	5	0.2%
+Sale_Condition	Normal	2413	82.4%
+Sale_Condition	Partial	245	8.4%
+Sale_Condition	Abnorml	190	6.5%
+Sale_Condition	Family	46	1.6%
+Sale_Condition	Alloca	24	0.8%
+Sale_Condition	AdjLand	12	0.4%
+Bldg_Type	OneFam	2425	82.8%
+Bldg_Type	TwnhsE	233	8.0%
+Bldg_Type	Duplex	109	3.7%
+Bldg_Type	Twnhs	101	3.4%
+Bldg_Type	TwoFmCon	62	2.1%
+Bsmt_Exposure	No	1906	65.1%
+Bsmt_Exposure	Av	418	14.3%
+Bsmt_Exposure	Gd	284	9.7%
+Bsmt_Exposure	Mn	239	8.2%
+Bsmt_Exposure	No_Basement	83	2.8%
+Exter_Cond	Typical	2549	87.0%
+Exter_Cond	Good	299	10.2%
+Exter_Cond	Fair	67	2.3%
+Exter_Cond	Excellent	12	0.4%
+Exter_Cond	Poor	3	0.1%
+Fence	No_Fence	2358	80.5%
+Fence	Minimum_Privacy	330	11.3%
+Fence	Good_Privacy	118	4.0%
+Fence	Good_Wood	112	3.8%
+Fence	Minimum_Wood_Wire	12	0.4%
+Heating_QC	Excellent	1495	51.0%
+Heating_QC	Typical	864	29.5%
+Heating_QC	Good	476	16.2%
+Heating_QC	Fair	92	3.1%
+Heating_QC	Poor	3	0.1%
+Lot_Config	Inside	2140	73.0%
+Lot_Config	Corner	511	17.4%
+Lot_Config	CulDSac	180	6.1%
+Lot_Config	FR2	85	2.9%
+Lot_Config	FR3	14	0.5%
+Mas_Vnr_Type	None	1775	60.6%
+Mas_Vnr_Type	BrkFace	880	30.0%
+Mas_Vnr_Type	Stone	249	8.5%
+Mas_Vnr_Type	BrkCmn	25	0.9%
+Mas_Vnr_Type	CBlock	1	0.0%
+Pool_QC	No_Pool	2917	99.6%
+Pool_QC	Excellent	4	0.1%
+Pool_QC	Good	4	0.1%
+Pool_QC	Typical	3	0.1%
+Pool_QC	Fair	2	0.1%
+Garage_Finish	Unf	1231	42.0%
+Garage_Finish	RFn	812	27.7%
+Garage_Finish	Fin	728	24.8%
+Garage_Finish	No_Garage	159	5.4%
+Land_Contour	Lvl	2633	89.9%
+Land_Contour	HLS	120	4.1%
+Land_Contour	Bnk	117	4.0%
+Land_Contour	Low	60	2.0%
+Lot_Shape	Regular	1859	63.4%
+Lot_Shape	Slightly_Irregular	979	33.4%
+Lot_Shape	Moderately_Irregular	76	2.6%
+Lot_Shape	Irregular	16	0.5%
+Alley	No_Alley_Access	2732	93.2%
+Alley	Gravel	120	4.1%
+Alley	Paved	78	2.7%
+Land_Slope	Gtl	2789	95.2%
+Land_Slope	Mod	125	4.3%
+Land_Slope	Sev	16	0.5%
+Paved_Drive	Paved	2652	90.5%
+Paved_Drive	Dirt_Gravel	216	7.4%
+Paved_Drive	Partial_Pavement	62	2.1%
+Utilities	AllPub	2927	99.9%
+Utilities	NoSewr	2	0.1%
+Utilities	NoSeWa	1	0.0%
+Central_Air	Y	2734	93.3%
+Central_Air	N	196	6.7%
+Street	Pave	2918	99.6%
+Street	Grvl	12	0.4%
+Variables numéricas
+Calculamos medidas de tendencia central, posición, dispersión y dirección de asimetría (media - mediana):
+
+skim_summary %>%
+  filter(skim_type == "numeric") %>%
+  transmute(
+    variable = skim_variable,
+    mean     = numeric.mean,
+    sd       = numeric.sd,
+    rel_skew = abs(numeric.mean - numeric.p50) / numeric.sd, # asimetría relativa a la dispersión
+    asimetría = case_when(
+      is.na(rel_skew)             ~ "indefinida",
+      rel_skew < 0.1              ~ "Aprox. simétrica",
+      numeric.mean > numeric.p50  ~ "Positiva",
+      TRUE                        ~ "Negativa"
+    ),
+    histograma = numeric.hist,
+    p0       = numeric.p0,
+    p25      = numeric.p25,
+    median   = numeric.p50,
+    p75      = numeric.p75,
+    p100     = numeric.p100
+  ) %>%
+  knitr::kable(
+    digits = 2,
+    caption = "Variables numéricas"
+  )
+
+Variables numéricas
+variable	mean	sd	rel_skew	asimetría	histograma	p0	p25	median	p75	p100
+Lot_Frontage	57.65	33.50	0.16	Negativa	▇▇▁▁▁	0.00	43.00	63.00	78.00	313.00
+Lot_Area	10147.92	7880.02	0.09	Aprox. simétrica	▇▁▁▁▁	1300.00	7440.25	9436.50	11555.25	215245.00
+Year_Built	1971.36	30.25	0.05	Aprox. simétrica	▁▂▃▆▇	1872.00	1954.00	1973.00	2001.00	2010.00
+Year_Remod_Add	1984.27	20.86	0.42	Negativa	▅▂▂▃▇	1950.00	1965.00	1993.00	2004.00	2010.00
+Mas_Vnr_Area	101.10	178.63	0.57	Positiva	▇▁▁▁▁	0.00	0.00	0.00	162.75	1600.00
+BsmtFin_SF_1	4.18	2.23	0.53	Positiva	▃▂▇▁▇	0.00	3.00	3.00	7.00	7.00
+BsmtFin_SF_2	49.71	169.14	0.29	Positiva	▇▁▁▁▁	0.00	0.00	0.00	0.00	1526.00
+Bsmt_Unf_SF	559.07	439.54	0.21	Positiva	▇▅▂▁▁	0.00	219.00	465.50	801.75	2336.00
+Total_Bsmt_SF	1051.26	440.97	0.14	Positiva	▇▃▁▁▁	0.00	793.00	990.00	1301.50	6110.00
+First_Flr_SF	1159.56	391.89	0.19	Positiva	▇▃▁▁▁	334.00	876.25	1084.00	1384.00	5095.00
+Second_Flr_SF	335.46	428.40	0.78	Positiva	▇▃▂▁▁	0.00	0.00	0.00	703.75	2065.00
+Gr_Liv_Area	1499.69	505.51	0.11	Positiva	▇▇▁▁▁	334.00	1126.00	1442.00	1742.75	5642.00
+Bsmt_Full_Bath	0.43	0.52	0.82	Positiva	▇▆▁▁▁	0.00	0.00	0.00	1.00	3.00
+Bsmt_Half_Bath	0.06	0.25	0.25	Positiva	▇▁▁▁▁	0.00	0.00	0.00	0.00	2.00
+Full_Bath	1.57	0.55	0.78	Negativa	▁▇▇▁▁	0.00	1.00	2.00	2.00	4.00
+Half_Bath	0.38	0.50	0.76	Positiva	▇▁▅▁▁	0.00	0.00	0.00	1.00	2.00
+Bedroom_AbvGr	2.85	0.83	0.18	Negativa	▁▇▂▁▁	0.00	2.00	3.00	3.00	8.00
+Kitchen_AbvGr	1.04	0.21	0.21	Positiva	▁▇▁▁▁	0.00	1.00	1.00	1.00	3.00
+TotRms_AbvGrd	6.44	1.57	0.28	Positiva	▁▇▂▁▁	2.00	5.00	6.00	7.00	15.00
+Fireplaces	0.60	0.65	0.62	Negativa	▇▇▁▁▁	0.00	0.00	1.00	1.00	4.00
+Garage_Cars	1.77	0.76	0.31	Negativa	▅▇▂▁▁	0.00	1.00	2.00	2.00	5.00
+Garage_Area	472.66	215.19	0.03	Aprox. simétrica	▃▇▃▁▁	0.00	320.00	480.00	576.00	1488.00
+Wood_Deck_SF	93.75	126.36	0.74	Positiva	▇▁▁▁▁	0.00	0.00	0.00	168.00	1424.00
+Open_Porch_SF	47.53	67.48	0.30	Positiva	▇▁▁▁▁	0.00	0.00	27.00	70.00	742.00
+Enclosed_Porch	23.01	64.14	0.36	Positiva	▇▁▁▁▁	0.00	0.00	0.00	0.00	1012.00
+Three_season_porch	2.59	25.14	0.10	Positiva	▇▁▁▁▁	0.00	0.00	0.00	0.00	508.00
+Screen_Porch	16.00	56.09	0.29	Positiva	▇▁▁▁▁	0.00	0.00	0.00	0.00	576.00
+Pool_Area	2.24	35.60	0.06	Aprox. simétrica	▇▁▁▁▁	0.00	0.00	0.00	0.00	800.00
+Misc_Val	50.64	566.34	0.09	Aprox. simétrica	▇▁▁▁▁	0.00	0.00	0.00	0.00	17000.00
+Mo_Sold	6.22	2.71	0.08	Aprox. simétrica	▅▆▇▃▃	1.00	4.00	6.00	8.00	12.00
+Year_Sold	2007.79	1.32	0.16	Negativa	▇▇▇▇▃	2006.00	2007.00	2008.00	2009.00	2010.00
+Sale_Price	180796.06	79886.69	0.26	Positiva	▇▇▁▁▁	12789.00	129500.00	160000.00	213500.00	755000.00
+Longitude	-93.64	0.03	0.04	Aprox. simétrica	▅▅▇▆▁	-93.69	-93.66	-93.64	-93.62	-93.58
+Latitude	42.03	0.02	0.01	Aprox. simétrica	▂▂▇▇▇	41.99	42.02	42.03	42.05	42.06
+Nota: rel_skew es una aproximación útil para comparar diferencias relativas entre media y mediana entre distribuciones con escalas o unidades distintas. Sin embargo, no siempre refleja adecuadamente la estructura de la distribución. Por ejemplo:
+
+En Lot_Area, el valor de rel_skew es bajo a pesar de una asimetría real muy alta, ya que la alta desviación estándar atenúa el impacto de colas extremas.
+En Kitchen_AbvGr, la aparente simetría se debe a un soporte discreto y reducido con una moda dominante, lo que mantiene la media y mediana cercanas aunque exista asimetría.
+En BsmtFin_SF_1, se observa lo opuesto: la diferencia entre media y mediana parece indicar asimetría, pero se debe a modas discretas separadas dentro de una distribución que en realidad tiene colas relativamente simétricas.
+Por ello, se complementa el análisis con el coeficiente de asimetría (skewness) y otras métricas robustas.
+skim_summary %>% rowwise() %>% mutate(x = list(ames_data[[skim_variable]])) %>% glimpse()
+
+# Variables numéricas con EDA extendido
+numeric_eda <- skim_summary %>%
+  filter(skim_type == "numeric") %>%
+  # Para poder usar e1071 necesitamos extraer cada vector numérico de las variables
+  rowwise() %>%
+  mutate(
+    x = list(ames_data[[skim_variable]]), # vector original de cada variable
+    cv = numeric.sd / numeric.mean,       # coef. de variación
+    iqr = numeric.p75 - numeric.p25,      # rango IQ
+    skewness = skewness(x),               # asimetría
+    medcouple = mc(x,doScale = TRUE), # asimetría robusta
+    kurtosis = kurtosis(x),               # curtosis
+    prop_outliers = if_else(iqr == 0, NA_real_,
+                        mean(x < (numeric.p25 - 1.5*iqr) |
+                        x > (numeric.p75 + 1.5*iqr), 
+                        na.rm = TRUE)), # outliers regla Tukey
+    transform_rec = case_when(
+      skewness < 0 ~ "ninguna: asimetría negativa",
+      !all(x >= 0, na.rm = TRUE) ~ "ninguna: valores negativos",
+      all(x > 0,  na.rm = TRUE) & skewness > 1.5 ~ "log",
+      all(x > 0,  na.rm = TRUE) & skewness > 0.5 ~ "Box-Cox (evaluar)",
+      all(x >= 0, na.rm = TRUE) & skewness > 0.5 ~ "log(x+1) o sqrt: contiene ceros",
+      TRUE            ~ "ninguna"
+    )
+  ) %>%
+  ungroup() %>%
+  transmute(
+    variable        = skim_variable,
+    mean            = numeric.mean,
+    sd              = numeric.sd,
+    cv,
+    skewness        = round(skewness, 2),
+    medcouple       = round(medcouple, 2),
+    kurtosis        = round(kurtosis, 2),
+    pct_outliers    = percent(prop_outliers, accuracy = 0.1),
+    iqr,
+    histograma      = numeric.hist,
+    transform_rec   = transform_rec
+  )
+
+  knitr::kable(
+    numeric_eda,
+    digits = 2,
+    caption = "Análisis extendido de variables numéricas"
+  )
+
+Análisis extendido de variables numéricas
+variable	mean	sd	cv	skewness	medcouple	kurtosis	pct_outliers	iqr	histograma	transform_rec
+Lot_Frontage	57.65	33.50	0.58	0.03	-0.20	2.15	1.1%	35.00	▇▇▁▁▁	ninguna
+Lot_Area	10147.92	7880.02	0.78	12.81	0.03	264.39	4.3%	4115.00	▇▁▁▁▁	log
+Year_Built	1971.36	30.25	0.02	-0.60	0.00	-0.50	0.3%	47.00	▁▂▃▆▇	ninguna: asimetría negativa
+Year_Remod_Add	1984.27	20.86	0.01	-0.45	-0.48	-1.34	0.0%	39.00	▅▂▂▃▇	ninguna: asimetría negativa
+Mas_Vnr_Area	101.10	178.63	1.77	2.62	1.00	9.34	6.9%	162.75	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+BsmtFin_SF_1	4.18	2.23	0.53	0.09	0.60	-1.51	0.0%	4.00	▃▂▇▁▇	ninguna
+BsmtFin_SF_2	49.71	169.14	3.40	4.14	1.00	18.74	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Bsmt_Unf_SF	559.07	439.54	0.79	0.92	0.21	0.40	1.9%	582.75	▇▅▂▁▁	log(x+1) o sqrt: contiene ceros
+Total_Bsmt_SF	1051.26	440.97	0.42	1.15	0.20	9.08	4.2%	508.50	▇▃▁▁▁	log(x+1) o sqrt: contiene ceros
+First_Flr_SF	1159.56	391.89	0.34	1.47	0.21	6.95	1.5%	507.75	▇▃▁▁▁	Box-Cox (evaluar)
+Second_Flr_SF	335.46	428.40	1.28	0.87	1.00	-0.42	0.3%	703.75	▇▃▂▁▁	log(x+1) o sqrt: contiene ceros
+Gr_Liv_Area	1499.69	505.51	0.34	1.27	0.07	4.12	2.6%	616.75	▇▇▁▁▁	Box-Cox (evaluar)
+Bsmt_Full_Bath	0.43	0.52	1.22	0.62	1.00	-0.75	0.1%	1.00	▇▆▁▁▁	log(x+1) o sqrt: contiene ceros
+Bsmt_Half_Bath	0.06	0.25	4.01	3.94	-1.00	14.90	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Full_Bath	1.57	0.55	0.35	0.17	-1.00	-0.54	0.1%	1.00	▁▇▇▁▁	ninguna
+Half_Bath	0.38	0.50	1.32	0.70	1.00	-1.03	0.0%	1.00	▇▁▅▁▁	log(x+1) o sqrt: contiene ceros
+Bedroom_AbvGr	2.85	0.83	0.29	0.31	-1.00	1.88	2.7%	1.00	▁▇▂▁▁	ninguna
+Kitchen_AbvGr	1.04	0.21	0.20	4.31	-1.00	19.82	NA	0.00	▁▇▁▁▁	log(x+1) o sqrt: contiene ceros
+TotRms_AbvGrd	6.44	1.57	0.24	0.75	0.33	1.15	1.7%	2.00	▁▇▂▁▁	Box-Cox (evaluar)
+Fireplaces	0.60	0.65	1.08	0.74	-1.00	0.10	0.4%	1.00	▇▇▁▁▁	log(x+1) o sqrt: contiene ceros
+Garage_Cars	1.77	0.76	0.43	-0.22	-1.00	0.24	0.6%	1.00	▅▇▂▁▁	ninguna: asimetría negativa
+Garage_Area	472.66	215.19	0.46	0.24	-0.09	0.94	1.4%	256.00	▃▇▃▁▁	ninguna
+Wood_Deck_SF	93.75	126.36	1.35	1.84	1.00	6.73	2.3%	168.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Open_Porch_SF	47.53	67.48	1.42	2.53	0.29	10.92	5.4%	70.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Enclosed_Porch	23.01	64.14	2.79	4.01	1.00	28.42	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Three_season_porch	2.59	25.14	9.70	11.39	-1.00	149.63	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Screen_Porch	16.00	56.09	3.51	3.95	1.00	17.81	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Pool_Area	2.24	35.60	15.87	16.92	-1.00	299.06	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Misc_Val	50.64	566.34	11.18	21.98	-1.00	564.85	NA	0.00	▇▁▁▁▁	log(x+1) o sqrt: contiene ceros
+Mo_Sold	6.22	2.71	0.44	0.19	0.00	-0.46	0.0%	4.00	▅▆▇▃▃	ninguna
+Year_Sold	2007.79	1.32	0.00	0.13	0.00	-1.16	0.0%	2.00	▇▇▇▇▃	ninguna
+Sale_Price	180796.06	79886.69	0.44	1.74	0.29	5.10	4.7%	84000.00	▇▇▁▁▁	log
+Longitude	-93.64	0.03	0.00	-0.31	-0.03	-0.94	0.0%	0.04	▅▅▇▆▁	ninguna: asimetría negativa
+Latitude	42.03	0.02	0.00	-0.49	0.07	-0.18	0.0%	0.03	▂▂▇▇▇	ninguna: asimetría negativa
+Nota sobre las medidas de asimetría: En este análisis se reportan dos métricas complementarias para evaluar la asimetría de las variables numéricas:
+
+skewness corresponde al coeficiente de asimetría muestral (), una medida paramétrica que mide la forma de la distribución en función del sesgo respecto a la media (mediante el tercer momento central muestral). Es sensible a valores atípicos (outliers) y capta la asimetría en las colas.
+medcouple: es un estadístico no paramétrico y robusto que mide la asimetría del “cuerpo central” de la distribución, sin verse afectado por outliers.
+Dado que ambas métricas responden a diferentes aspectos de la forma de la distribución, pueden arrojar resultados aparentemente contradictorios:
+
+En variables con muchos ceros y algunos valores extremos altos (como Pool_Area o Misc_Val), el medcouple puede ser negativo (indicando que la masa principal está a la derecha), mientras que el skewness será positivo por la presencia de colas largas hacia la derecha.
+En otros casos, como Kitchen_AbvGr, aunque la media y la mediana están alineadas (dando idea de simetría), el skewness puede ser alto por la naturaleza discreta de la variable (muchos 1 y pocos valores mayores).
+Por ello, es recomendable interpretar ambas medidas en conjunto: skewness capta simetría global, incluyendo extremos, y medcouple resume la simetría de la parte mas densa de la distribución. Usarlas juntas da una visión más completa sobre la simetría de cada variable.
+Calidad de Datos y Ausencia Estructural
+El tratamiento de valores faltantes es una etapa clave del preprocesamiento en proyectos de datos, ya que afecta directamente las decisiones de modelado, la validez de los patrones descubiertos y la capacidad de generalización de los modelos. No todos los modelos toleran valores faltantes, y su presencia puede introducir sesgos o errores si no se trata de forma adecuada (transformaciones). Como veremos, este conjunto no contiene valores faltantes explícitos, codificaciones que indican ausencia estructural, con el objetivo de tomar decisiones informadas para su tratamiento posterior.
+
+Falta presentar resultados esperados a partir de la literatura relevante existente (Paper “Ames, Iowa: Alternative to the Boston Housing Data” y Kaggle notebooks) y contrastar resultados.
+
+En esta sección abordamos:
+
+Valores faltantes explícitos (NA)
+Codificaciones especiales como "None", "No_", y ceros estructurales en variables numéricas
+Ausencia estructural implícita a partir del contexto de la variable
+Además, se documentan decisiones preliminares sobre imputación, transformación o recodificación para trazabilidad futura.
+
+Valores faltantes explícitos (missing values)
+# Resumen de NAs
+n_obs <- nrow(ames_data)
+na_summary <- ames_data %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "n_na") %>%
+  filter(n_na > 0) %>%
+  mutate(pct = round(100 * n_na / n_obs, 2)) %>%
+  arrange(desc(pct))
+
+# Tabla vacía
+# knitr::kable(na_summary, caption = "Variables con valores faltantes")
+cat("Número de variables con NA:", nrow(na_summary), "\n")
+
+Número de variables con NA: 0 
+No se detectan missing values explícitos en el conjunto, lo que evita imputaciones tradicionales y nos lleva a las codificaciones especiales.
+Variables categóricas: codificaciones especiales
+Para un listado exhaustivo de todos los niveles de las variables categóricas, véase la sección “Variables categóricas” del análisis descriptivo univariado.
+
+Codificaciones de ausencia
+Las variables categóricas que indican ausencia estructural son aquellas que el data entry representa la ausencia de la característica usando strings como “None” o “No_*”.
+
+# Niveles que indican ausencia
+none_levels <- c("None", "No_Alley_Access", "No_Pool", "No_Fence", "No_Garage", "No_Basement")
+
+ames_data %>%
+  select(where(is.factor)) %>%
+  summarise(across(everything(), ~ sum(. %in% none_levels))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "n_none") %>%
+  filter(n_none > 0) %>%
+  mutate(percent = percent(n_none / n_obs, accuracy = 0.1)) %>%
+  arrange(desc(n_none/ n_obs)) %>%
+  select(-n_none) %>%
+  knitr::kable(caption = "Variables categóricas con niveles que indican ausencia estructural")
+
+Variables categóricas con niveles que indican ausencia estructural
+variable	percent
+Pool_QC	99.6%
+Misc_Feature	96.4%
+Alley	93.2%
+Fence	80.5%
+Mas_Vnr_Type	60.6%
+Garage_Finish	5.4%
+Garage_Cond	5.4%
+Garage_Type	5.4%
+Bsmt_Exposure	2.8%
+BsmtFin_Type_2	2.8%
+Bsmt_Cond	2.7%
+BsmtFin_Type_1	2.7%
+Todos los lineamientos relativos a la consolidación de niveles en variables categóricas (alta cardinalidad, agrupación de niveles raros, binarización, etc.) se encuentran ahora en Recomendaciones de preprocesamiento dentro de la subsección Reagrupación de niveles en categóricas, con ejemplos y tablas que explicitan la estrategia de recodificación para cada caso.
+Variables numéricas: ceros estructurales
+En el Ames Housing Dataset, algunos ceros en variables numéricas no representan valores cuantitativos reales, sino que indican la ausencia estructural de una característica. Por ejemplo, un valor 0 en Garage_Area implica que no hay garaje, y en MasVnr_Area, que no hay revestimiento de mampostería. Esta interpretación está respaldada por variables categóricas asociadas como Garage_Type == "None" o MasVnr_Type == "None".
+
+Como se señala en varios notebooks de Kaggle, “el valor 0 puede estar indicando que el criterio no aplicaba”.
+Es importante tener en cuenta esta semántica al transformar, imputar o escalar estas variables, ya que estos ceros no deben tratarse como valores numéricos ordinarios.
+
+A continuación se muestra la proporción de ceros estructurales en variables numéricas:
+
+# Porcentaje de observaciones `0` en variables numéricas
+ames_data %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), ~ mean(. == 0, na.rm = TRUE))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "zeros_prop") %>%
+  filter(zeros_prop > 0) %>%
+  mutate(pct_zeros = percent(zeros_prop, accuracy = 0.1)) %>%
+  arrange(desc(zeros_prop)) %>%
+  select(-zeros_prop) %>%
+  knitr::kable(caption = "Proporción de ceros estructurales en variables numéricas")
+
+Proporción de ceros estructurales en variables numéricas
+variable	pct_zeros
+Pool_Area	99.6%
+Three_season_porch	98.7%
+Misc_Val	96.5%
+Bsmt_Half_Bath	94.0%
+Screen_Porch	91.3%
+BsmtFin_SF_2	88.0%
+Enclosed_Porch	84.3%
+Half_Bath	62.9%
+Mas_Vnr_Area	60.4%
+Bsmt_Full_Bath	58.3%
+Second_Flr_SF	57.3%
+Wood_Deck_SF	52.1%
+Fireplaces	48.5%
+Open_Porch_SF	44.4%
+Lot_Frontage	16.7%
+Bsmt_Unf_SF	8.4%
+Garage_Cars	5.4%
+Garage_Area	5.4%
+Total_Bsmt_SF	2.7%
+Full_Bath	0.4%
+Bedroom_AbvGr	0.3%
+Kitchen_AbvGr	0.1%
+BsmtFin_SF_1	0.0%
+Mapeo de variables y métricas asociadas
+A continuación se exploran pares de variables categóricas (cat_var) y numéricas (num_var) que presentan un comportamiento estructural conjunto. En estos casos, el valor "None" en la variable categórica suele coincidir con un valor 0 en la numérica, lo que refuerza la interpretación del cero como indicador de ausencia de la característica.
+
+pares <- list(
+  c("Garage_Type",     "Garage_Area"),
+  c("Garage_Cond",     "Garage_Area"),
+  c("Bsmt_Cond",       "Total_Bsmt_SF"), 
+  c("Bsmt_Exposure",   "Total_Bsmt_SF"), 
+  c("Pool_QC",         "Pool_Area"),
+  c("Mas_Vnr_Type",     "Mas_Vnr_Area"),
+  c("Misc_Feature",    "Misc_Val")
+)
+
+# Número total de observaciones
+n_obs <- nrow(ames_data)
+
+# Función que, dado un par (cat_var, num_var), devuelve un tibble con métricas
+resumen_pareado <- function(par) {
+  cat_var <- par[1]
+  num_var <- par[2]
+
+  # Filtrar none / cero
+  df <- ames_data %>%
+    mutate(
+      is_none = .data[[cat_var]] %in% none_levels,
+      is_zero = .data[[num_var]] == 0
+    )
+
+  n_none        <- sum(df$is_none,    na.rm = TRUE)
+  n_zero        <- sum(df$is_zero,    na.rm = TRUE)
+  n_none_zero   <- sum(df$is_none & df$is_zero, na.rm = TRUE)
+
+  tibble(
+    cat_var              = cat_var,
+    num_var              = num_var,
+    n_none               = n_none,
+    pct_none             = percent(n_none / n_obs, accuracy = 0.1),
+    n_zero               = n_zero,
+    pct_zero             = percent(n_zero / n_obs, accuracy = 0.1),
+    n_none_zero          = n_none_zero,
+    pct_zero_given_none  = if (n_none>0) percent(n_none_zero / n_none, accuracy = 0.1) else NA_real_,
+    pct_none_given_zero  = if (n_zero>0) percent(n_none_zero / n_zero, accuracy = 0.1) else NA_real_
+  )
+}
+
+# Mapeamos y combinamos en un solo data.frame
+tabla_ausencia <- map_dfr(pares, resumen_pareado)
+
+knitr::kable(
+  tabla_ausencia,
+  caption = "Métricas de ausencia estructural por par (None vs 0)",
+  col.names = c(
+    "Var. Categ.", "Var. Num.",
+    "count None", "pct None",
+    "count 0",    "pct 0",
+    "count None∧0",
+    "pct 0|None", "pct None|0"
+  )
+)
+
+Métricas de ausencia estructural por par (None vs 0)
+Var. Categ.	Var. Num.	count None	pct None	count 0	pct 0	count None∧0	pct 0|None	pct None|0
+Garage_Type	Garage_Area	157	5.4%	158	5.4%	157	100.0%	99.4%
+Garage_Cond	Garage_Area	159	5.4%	158	5.4%	158	99.4%	100.0%
+Bsmt_Cond	Total_Bsmt_SF	80	2.7%	80	2.7%	80	100.0%	100.0%
+Bsmt_Exposure	Total_Bsmt_SF	83	2.8%	80	2.7%	80	96.4%	100.0%
+Pool_QC	Pool_Area	2917	99.6%	2917	99.6%	2917	100.0%	100.0%
+Mas_Vnr_Type	Mas_Vnr_Area	1775	60.6%	1771	60.4%	1768	99.6%	99.8%
+Misc_Feature	Misc_Val	2824	96.4%	2827	96.5%	2824	100.0%	99.9%
+Esta tabla permite verificar la consistencia interna del dataset y orientar decisiones de ingeniería de variables, especialmente para Garage_Area, Total_Bsmt_SF y Mas_Vnr_Area, que presentan asociaciones estructurales claras con variables categóricas y alta correlación con Sale_Price.
+
+Las recomendaciones específicas (creación de indicadores binarios, transformaciones logarítmicas, generación de interacciones, y recodificación de ceros como NA) se consolidan en la sección Ingeniería de variables y transformaciones, junto con una tabla resumen de problemas detectados y acciones propuestas.
+Duplicados
+No existe variable Id en el conjunto, por lo que no se puede validar unicidad de filas por identificador. Validaremos unicidad de filas por fila completa.
+
+# Validar unicidad de Id si existiera o por fila completa
+n_duplicadas <- ames_data %>% duplicated() %>% sum()
+cat("Número de filas duplicadas:", n_duplicadas, "\n")
+
+Número de filas duplicadas: 0 
+No se detectan filas duplicadas exactas.
+Análisis de la variable respuesta: Sale_Price
+
+Resumen estadístico
+# Resumen estadístico de Sale_Price
+summary(ames_data$Sale_Price)
+
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  12789  129500  160000  180796  213500  755000 
+# Coeficiente de variación
+cv_sale_price <- sd(ames_data$Sale_Price, na.rm = TRUE) / mean(ames_data$Sale_Price, na.rm = TRUE) * 100
+cv_sale_price <- round(cv_sale_price, 2)
+
+cat("Coeficiente de variación de Sale_Price:", cv_sale_price, "%\n")
+
+Coeficiente de variación de Sale_Price: 44.19 %
+skewness_value <- skewness(ames_data$Sale_Price, na.rm = TRUE)
+kurtosis_value <- kurtosis(ames_data$Sale_Price, na.rm = TRUE)
+
+cat("Asimetría:", round(skewness_value, 2), "\n")
+
+Asimetría: 1.74 
+cat("Curtosis:", round(kurtosis_value, 2), "\n")
+
+Curtosis: 5.1 
+Visualización de la distribución
+# Histograma con curva de densidad
+p1 <- ames_data %>%
+  ggplot(aes(x = Sale_Price)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 50, 
+                 fill = "steelblue", 
+                 color = "white", 
+                 alpha = 0.8) +
+  geom_density(color = "red", linewidth = 1) +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(title = "Distribución de Precios de Venta",
+       x = "Precio de Venta (USD)",
+       y = "Densidad") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# QQ-plot para normalidad
+p2 <- ggplot(ames_data, aes(sample = Sale_Price)) +
+  stat_qq(color = "steelblue") +
+  stat_qq_line(color = "red") +
+  labs(title = "QQ-Plot de Normalidad",
+       x = "Cuantiles Teóricos",
+       y = "Cuantiles Muestrales") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Boxplot para identificar valores atípicos
+p3 <- ames_data %>%
+  ggplot(aes(y = Sale_Price)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(title = "Boxplot de Precios de Venta",
+       y = "Precio de Venta (USD)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Mostrar gráficos
+(p1 + p2) / p3 + plot_layout(heights = c(2, 1))
+
+
+Transformación logarítmica
+# Aplicar transformación logarítmica
+ames_data <- ames_data %>%
+  mutate(log_Sale_Price = log(Sale_Price))
+
+# Visualizar distribución transformada
+p4 <- ames_data %>%
+  ggplot(aes(x = log_Sale_Price)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 50, 
+                 fill = "steelblue", 
+                 color = "white", 
+                 alpha = 0.8) +
+  geom_density(color = "red", linewidth = 1) +
+  labs(title = "Distribución de log(Sale_Price)",
+       x = "log(Precio de Venta)",
+       y = "Densidad") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# QQ-plot para normalidad de la variable transformada
+p5 <- ggplot(ames_data, aes(sample = log_Sale_Price)) +
+  stat_qq(color = "steelblue") +
+  stat_qq_line(color = "red") +
+  labs(title = "QQ-Plot de log(Sale_Price)",
+       x = "Cuantiles Teóricos",
+       y = "Cuantiles Muestrales") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Mostrar gráficos transformados
+p4 + p5
+
+
+Tabla comparativa de resumen descriptivo: Sale_Price vs log_Sale_Price
+Habría que: - Elegir una de las dos tablas - Incluir tests de normalidad para ambas variables o por lo menos que quede tabulado los p-valor para diferentes pruebas de hipótesis - Arreglar warnings - Pivotar las tablas para que las variables queden en las columnas y las métricas en las filas
+
+# Variables a resumir
+vars <- c("Sale_Price", "log_Sale_Price")
+
+# Recalculamos el resumen skim incluyendo log(Sale_Price)
+skim_summary <- skim(ames_data)
+
+# Extraer resumen estándar de skimr
+std <- skim_summary %>%
+  filter(skim_variable %in% vars) %>%
+  transmute(
+    variable   = skim_variable,
+    mean       = numeric.mean,
+    sd         = numeric.sd,
+    rel_skew   = abs(numeric.mean - numeric.p50) / numeric.sd,
+    asimetría  = case_when(
+                   rel_skew < 0.1              ~ "Aprox. simétrica",
+                   numeric.mean > numeric.p50  ~ "Positiva",
+                   TRUE                        ~ "Negativa"
+                 ),
+    p0         = numeric.p0,
+    p25        = numeric.p25,
+    median     = numeric.p50,
+    p75        = numeric.p75,
+    p100       = numeric.p100
+  )
+
+# Calcular resumen extendido
+ext <- skim_summary %>%
+  filter(skim_variable %in% vars) %>%
+  rowwise() %>%
+  mutate(
+    x           = list(ames_data[[skim_variable]]),
+    cv          = numeric.sd / numeric.mean,
+    iqr         = numeric.p75 - numeric.p25,
+    skewness    = skewness(x, na.rm = TRUE),
+    medcouple   = mc(x, doScale = TRUE),
+    kurtosis    = kurtosis(x, na.rm = TRUE),
+    outliers    = mean(x < (numeric.p25 - 1.5*iqr) |
+                       x > (numeric.p75 + 1.5*iqr), na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  transmute(
+    variable      = skim_variable,
+    cv            = round(cv, 2),
+    IQR           = round(iqr, 2),
+    skewness      = round(skewness, 2),
+    medcouple     = round(medcouple, 2),
+    kurtosis      = round(kurtosis, 2),
+    pct_outliers  = scales::percent(outliers, accuracy = 0.1)
+  )
+
+# Unir y mostrar
+std %>%
+  left_join(ext, by = "variable") %>%
+  knitr::kable(
+    digits  = 2,
+    caption = "Comparación de estadísticas descriptivas para Sale_Price y log_Sale_Price"
+  )
+
+Comparación de estadísticas descriptivas para Sale_Price y log_Sale_Price
+variable	mean	sd	rel_skew	asimetría	p0	p25	median	p75	p100	cv	IQR	skewness	medcouple	kurtosis	pct_outliers
+Sale_Price	180796.06	79886.69	0.26	Positiva	12789.00	129500.00	160000.00	213500.00	755000.00	0.44	84000.0	1.74	0.29	5.10	4.7%
+log_Sale_Price	12.02	0.41	0.09	Aprox. simétrica	9.46	11.77	11.98	12.27	13.53	0.03	0.5	-0.01	0.13	1.51	2.0%
+ames_data %>%
+  # Seleccionar y pivotar
+  select(Sale_Price, log_Sale_Price) %>%
+  pivot_longer(everything(),
+               names_to  = "variable",
+               values_to = "valor") %>%
+  # Agrupar y resumir todo de una
+  group_by(variable) %>%
+  summarise(
+    # tendencia central y posición
+    media    = mean(valor, na.rm = TRUE),
+    mediana  = median(valor, na.rm = TRUE),
+    p25      = quantile(valor, 0.25, na.rm = TRUE),
+    p75      = quantile(valor, 0.75, na.rm = TRUE),
+    # dispersión
+    sd       = sd(valor, na.rm = TRUE),
+    IQR      = IQR(valor, na.rm = TRUE),
+    cv       = sd / media,
+    # asimetría y curtosis
+    skewness = e1071::skewness(valor, na.rm = TRUE),
+    medcouple= robustbase::mc(valor, doScale = TRUE),
+    kurtosis = e1071::kurtosis(valor, na.rm = TRUE),
+    # outliers según Tukey
+    pct_outliers = mean(
+      valor < (p25 - 1.5 * IQR) | valor > (p75 + 1.5 * IQR),
+      na.rm = TRUE
+    )
+  ) %>%
+  # Formatear porcentajes y decimales
+  mutate(
+    pct_outliers = scales::percent(pct_outliers, accuracy = 0.1),
+    across(c(media:cv, skewness:medcouple, kurtosis), round, 2)
+  ) %>%
+  knitr::kable(
+    caption = "Estadísticas descriptivas completas (tendencia, dispersión, asimetría, outliers)",
+    digits  = 2
+  )
+
+Warning: There was 1 warning in `mutate()`.
+ℹ In argument: `across(c(media:cv, skewness:medcouple, kurtosis), round, 2)`.
+Caused by warning:
+! The `...` argument of `across()` is deprecated as of dplyr 1.1.0.
+Supply arguments directly to `.fns` through an anonymous function instead.
+
+  # Previously
+  across(a:b, mean, na.rm = TRUE)
+
+  # Now
+  across(a:b, \(x) mean(x, na.rm = TRUE))
+Estadísticas descriptivas completas (tendencia, dispersión, asimetría, outliers)
+variable	media	mediana	p25	p75	sd	IQR	cv	skewness	medcouple	kurtosis	pct_outliers
+Sale_Price	180796.06	160000.00	129500.00	213500.00	79886.69	84000.0	0.44	1.74	0.29	5.10	4.7%
+log_Sale_Price	12.02	11.98	11.77	12.27	0.41	0.5	0.03	-0.01	0.13	1.51	2.0%
+Análisis de variables predictoras
+
+Variables numéricas
+Correlación con variables numéricas
+# Seleccionar solo variables numéricas
+numeric_vars <- ames_data %>%
+  select(where(is.numeric)) %>%
+  select(-any_of("log_Sale_Price")) %>% # Excluimos la variable respuesta transformada
+  select(-matches("^[A-Za-z]+\\.y\\.+[0-9]+\\.?[0-9]*$"))  # Eliminar columnas duplicadas
+
+# Matriz de correlación
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Variables más correlacionadas con Sale_Price
+cor_with_target <- cor_matrix[, "Sale_Price", drop = FALSE] %>%
+  as.data.frame() %>%
+  rownames_to_column("Variable") %>%
+  arrange(desc(Sale_Price)) %>%
+  filter(Variable != "Sale_Price")
+
+# Mostrar las 15 variables más correlacionadas
+head(cor_with_target, 15) %>% 
+  knitr::kable(digits = 3, 
+               col.names = c("Variable", "Correlación con Sale_Price"),
+               caption = "Variables numéricas más correlacionadas con Sale_Price")
+
+Variables numéricas más correlacionadas con Sale_Price
+Variable	Correlación con Sale_Price
+Gr_Liv_Area	0.707
+Garage_Cars	0.648
+Garage_Area	0.640
+Total_Bsmt_SF	0.633
+First_Flr_SF	0.622
+Year_Built	0.558
+Full_Bath	0.546
+Year_Remod_Add	0.533
+Mas_Vnr_Area	0.502
+TotRms_AbvGrd	0.495
+Fireplaces	0.475
+Wood_Deck_SF	0.327
+Open_Porch_SF	0.313
+Latitude	0.291
+Half_Bath	0.285
+# Gráfico de correlación para las 10 variables más relacionadas
+corrplot.mixed(cor(numeric_vars[, c("Sale_Price", head(cor_with_target$Variable, 10))], 
+                  use = "complete.obs"),
+               upper = "circle",
+               lower.col = "black",
+               number.cex = 0.7,
+               tl.cex = 0.7,
+               tl.pos = "lt",
+               title = "Matriz de correlación - Top 10 variables")
+
+
+Relaciones bivariadas con las variables más correlacionadas
+# Función para crear scatter plots con línea de tendencia
+plot_scatter <- function(data, x_var, y_var = "Sale_Price") {
+  data %>%
+    ggplot(aes(x = !!sym(x_var), y = !!sym(y_var))) +
+    geom_point(alpha = 0.5, color = "steelblue") +
+    geom_smooth(method = "lm", color = "red", se = FALSE) +
+    scale_y_continuous(labels = scales::dollar) +
+    labs(title = paste("Relación entre", x_var, "y Sale_Price"),
+         x = x_var,
+         y = "Precio de Venta (USD)") +
+    theme(plot.title = element_text(size = 10, hjust = 0.5))
+}
+
+# Variables numéricas más correlacionadas (excluyendo las que tienen muchos valores únicos)
+top_numeric <- cor_with_target %>%
+  filter(!Variable %in% c("Id", "Mo_Sold", "Year_Sold", "Garage_Yr_Blt")) %>%
+  head(6) %>%
+  pull(Variable)
+
+# Crear scatter plots
+scatter_plots <- map(top_numeric, ~plot_scatter(ames_data, .x))
+
+# Mostrar gráficos
+wrap_plots(scatter_plots, ncol = 2) + 
+  plot_annotation(title = 'Relación entre las variables numéricas más correlacionadas y Sale_Price',
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 12)))
+
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'
+
+Variables categóricas
+Análisis de variables categóricas importantes
+# Función para graficar variables categóricas vs Sale_Price
+plot_cat_var <- function(data, var_name, y_var = "Sale_Price") {
+  data %>%
+    ggplot(aes(x = reorder(!!sym(var_name), !!sym(y_var), FUN = median, na.rm = TRUE), 
+               y = !!sym(y_var))) +
+    geom_boxplot(fill = "steelblue", alpha = 0.7) +
+    stat_summary(fun = median, geom = "point", color = "red", size = 2) +
+    scale_y_continuous(labels = scales::dollar) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+          plot.title = element_text(size = 10, hjust = 0.5)) +
+    labs(title = paste("Distribución de", y_var, "por", var_name),
+         x = var_name,
+         y = y_var)
+}
+
+# Variables categóricas relevantes basadas en conocimiento de dominio
+cat_vars <- c("Neighborhood", "Overall_Cond", "Kitchen_AbvGr", "Garage_Type", 
+              "Heating_QC", "Foundation", "Bsmt_Cond")
+
+# Crear gráficos
+cat_plots <- map(cat_vars, ~plot_cat_var(ames_data, .x))
+
+# Mostrar gráficos
+wrap_plots(cat_plots, ncol = 2) + 
+  plot_annotation(title = 'Distribución de Sale_Price por variables categóricas',
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 14)))
+
+# Prompt: This is a placeholder
+podrias generar especificamente entonces la estructura y contenido markdown del chapters/03-data-cleaning.qmd  de manera exhaustiva, con las secciones, subsecciones del capitulo y las explicaciones y aclaraciones de prosa? no generes el codigo. En caso de ser apropiado incluir interpretaciones dejar una placeholder.
+
+# Prompt: This is a placeholder
+Ahora genera el todos los chunks de codigo del 02-data-description.qmd usando solamente estos paquetes:
+library(tidyverse)
+library(tidymodels) # ML
+library(modeldata)  # Conjunto Ames housing
+
+Y podes basarte en mi analisis monolitico que estamos actualmente desacoplando a archivos .qmd separados.
+Mi análisis monolítico:
+## Paneo Inicial y Diagnóstico de Calidad
+
+Realizamos un diagnóstico inicial del conjunto de datos `ames` cargado desde el paquete `{modeldata}`. Exploraremos su estructura, tipos de variables, codificaciones especiales, presencia de valores faltantes (*missing values*), ausencia estructural y duplicados.
+
+```{r load_data}
+# Cargar el conjunto ames
+data(ames)
+ames_data <- as_tibble(ames)
+```
+
+### Estructura
+
+```{r glimpse}
+glimpse(ames_data)
+```
+
+### Análisis descriptivo univariado
+
+Diferenciamos entre variables numéricas y categóricas, y para cada tipo se presentan estadísticos de resumen, distribución, y niveles o codificaciones relevantes, útil para detectar problemas tempranos.
+
+#### Clases de variables
+
+Este análisis se desarrolla en R base + tidyverse, que emplean el sistema de clases **S3**. Durante este informe nos referiremos indistinguiblemente a los tipos de variables como a las clases. Aunque especificamente, usaremos `class()` para obtener las clases de variables que son un *tipo semántico* y `typeof()` para obtener el tipo de dato de R que es un *tipo primitivo*.
+
+```{r class_types}
+# Conteo de clases
+ames_data %>%
+  summarise(across(everything(), class)) %>%
+  pivot_longer(cols = everything(), names_to = "n_variables", values_to = "class") %>%
+  count(class, name = "n_variables") %>%
+  knitr::kable(caption = "Distribución de clases de variables")
+```
+
+> **Notas**:
+>
+> Las clases se asignan automáticamente por R al importar los datos.
+>
+> Si consultamos el tipo primitivo que informa `typeof()`:
+>
+> -   Los vectores de clase `numeric` se almacenan como `"double"`
+> -   Los vectores de clase `factor` se almacenan como `"integer"`.
+
+##### Clase Factor
+
+Las clases factor son variables categóricas codificadas o enumeradas como enteros con sus niveles asociados.
+
+##### Clases Numéricas
+
+Identificamos las variables numéricas por su clase en R (`integer` o `numeric`) y por su naturaleza semántica como discretas (si todos sus valores son enteros) o continuas (si contienen decimales). Esta clasificación no siempre coincide con el tipo primitivo de dato (`double` o `integer`) asignado automáticamente por el parser de R.
+
+A su vez, calculamos la cardinalidad de cada variable, es decir, la cantidad de valores únicos observados. Este número resulta fundamental para distinguir entre variables que podrían recodificarse como factores (baja cardinalidad discreta) y aquellas que deben tratarse como numéricas en sentido estricto.
+
+```{r}
+num_vars <- ames_data %>% select(where(is.numeric))
+
+numeric_classification <- tibble(
+  variable    = names(num_vars),
+  clase       = map_chr(variable, ~ class(ames_data[[.x]])[1]),
+  is_discrete = map_lgl(variable, ~ all(ames_data[[.x]] == floor(ames_data[[.x]]), na.rm = TRUE))
+) %>%
+  mutate(
+    tipo        = if_else(is_discrete, "Discreta", "Continua"),
+    cardinalidad = map_int(variable, ~ n_distinct(ames_data[[.x]], na.rm = TRUE))
+  ) %>%
+  select(variable, clase, tipo, cardinalidad)
+
+knitr::kable(
+  numeric_classification %>% arrange(tipo, cardinalidad),
+  caption = "Clasificación semántica de variables numéricas con cardinalidad"
+)
+```
+
+> Nota: Observamos que variables como `Garage_Cars`, `Bsmt_Half_Bath` y `Bsmt_Full_Bath` son claramente numéricas discretas, pero fueron importadas como `numeric` (double) en vez de `integer`, a pesar de no tener decimales. Esta inconsistencia no afecta los cálculos pero sí debe considerarse al preparar modelos, ya que puede justificar transformar algunas de estas variables a `factor` u `ordered`.
+>
+> La lógica y criterios para convertir las variables numéricas discretas a factores (incluyendo la tabla de cardinalidades y las justificaciones) se han llevado a la sección **Recomendaciones de preprocesamiento** bajo el subtítulo **Conversión de variables discretas a factores**, donde encontraremos el listado completo y la acción sugerida para cada variable.
+
+#### Tipo de variable para el análisis
+
+Factores vs numéricos.
+
+```{r skim_types}
+skim_summary <- skim(ames_data)
+skim_summary %>%
+  count(skim_type, name = "n_variables") %>%
+  knitr::kable(caption = "Distribución de tipo de variables (skim_type)")
+```
+
+#### Variables categóricas
+
+Mostramos la cantidad de categorías y las categorías más observadas de las variables de tipo factor:
+
+```{r cat_skim_summary}
+skim_summary %>%
+  filter(skim_type == "factor") %>%
+  arrange(desc(factor.n_unique)) %>%
+  select(
+    variable    = skim_variable,
+    n_levels    = factor.n_unique,
+    top_counts  = factor.top_counts,
+  ) %>%
+  knitr::kable(
+    caption = "Variables categóricas: niveles y counts principales"
+  )
+```
+
+```{r cat_levels_distribution}
+
+# Cardinalidad de cada factor desde skim_summary
+cardinality <- skim_summary %>%
+  filter(skim_type == "factor") %>%
+  select(
+    variable = skim_variable,
+    n_levels = factor.n_unique
+  )
+
+# Conteo y proporciones por nivel
+factor_vars <- cardinality$variable
+
+prop_cat <- map_dfr(factor_vars, function(var) {
+  ames_data %>%
+    count(level = .data[[var]]) %>%
+    mutate(
+      variable = var,
+      prop     = percent(n / sum(n), accuracy = 0.1)
+    )
+})
+
+# Unir cardinalidad ordenando por n_levels (desc) y luego por n (desc)
+prop_cat %>%
+  left_join(cardinality, by = "variable") %>%
+  arrange(
+    desc(n_levels),  # se usa para ordenar, pero no se mostrará
+    variable,
+    desc(n)
+  ) %>%
+  select(variable, level, n, prop) %>%  # acá ya no incluimos n_levels
+  knitr::kable(
+    caption = "Distribución de niveles de variables categóricas"
+  )
+```
+
+#### Variables numéricas
+
+Calculamos medidas de tendencia central, posición, dispersión y dirección de asimetría (`media - mediana`):
+
+```{r num_skim_summary}
+skim_summary %>%
+  filter(skim_type == "numeric") %>%
+  transmute(
+    variable = skim_variable,
+    mean     = numeric.mean,
+    sd       = numeric.sd,
+    rel_skew = abs(numeric.mean - numeric.p50) / numeric.sd, # asimetría relativa a la dispersión
+    asimetría = case_when(
+      is.na(rel_skew)             ~ "indefinida",
+      rel_skew < 0.1              ~ "Aprox. simétrica",
+      numeric.mean > numeric.p50  ~ "Positiva",
+      TRUE                        ~ "Negativa"
+    ),
+    histograma = numeric.hist,
+    p0       = numeric.p0,
+    p25      = numeric.p25,
+    median   = numeric.p50,
+    p75      = numeric.p75,
+    p100     = numeric.p100
+  ) %>%
+  knitr::kable(
+    digits = 2,
+    caption = "Variables numéricas"
+  )
+```
+
+> Nota: `rel_skew` es una aproximación útil para comparar diferencias relativas entre media y mediana entre distribuciones con escalas o unidades distintas. Sin embargo, **no siempre refleja adecuadamente la estructura de la distribución**. Por ejemplo:
+>
+> -   En `Lot_Area`, el valor de `rel_skew` es bajo a pesar de una asimetría real muy alta, ya que **la alta desviación estándar atenúa el impacto de colas extremas**.
+> -   En `Kitchen_AbvGr`, la aparente simetría se debe a un **soporte discreto y reducido** con una moda dominante, lo que mantiene la media y mediana cercanas aunque exista asimetría.
+> -   En `BsmtFin_SF_1`, se observa lo opuesto: la diferencia entre media y mediana parece indicar asimetría, pero se debe a **modas discretas separadas** dentro de una distribución que en realidad tiene colas relativamente simétricas.
+>
+> Por ello, se complementa el análisis con el coeficiente de asimetría (`skewness`) y otras métricas robustas.
+
+```{r eval = FALSE}
+skim_summary %>% rowwise() %>% mutate(x = list(ames_data[[skim_variable]])) %>% glimpse()
+```
+
+```{r extended_numeric_eda}
+# Variables numéricas con EDA extendido
+numeric_eda <- skim_summary %>%
+  filter(skim_type == "numeric") %>%
+  # Para poder usar e1071 necesitamos extraer cada vector numérico de las variables
+  rowwise() %>%
+  mutate(
+    x = list(ames_data[[skim_variable]]), # vector original de cada variable
+    cv = numeric.sd / numeric.mean,       # coef. de variación
+    iqr = numeric.p75 - numeric.p25,      # rango IQ
+    skewness = skewness(x),               # asimetría
+    medcouple = mc(x,doScale = TRUE), # asimetría robusta
+    kurtosis = kurtosis(x),               # curtosis
+    prop_outliers = if_else(iqr == 0, NA_real_,
+                        mean(x < (numeric.p25 - 1.5*iqr) |
+                        x > (numeric.p75 + 1.5*iqr), 
+                        na.rm = TRUE)), # outliers regla Tukey
+    transform_rec = case_when(
+      skewness < 0 ~ "ninguna: asimetría negativa",
+      !all(x >= 0, na.rm = TRUE) ~ "ninguna: valores negativos",
+      all(x > 0,  na.rm = TRUE) & skewness > 1.5 ~ "log",
+      all(x > 0,  na.rm = TRUE) & skewness > 0.5 ~ "Box-Cox (evaluar)",
+      all(x >= 0, na.rm = TRUE) & skewness > 0.5 ~ "log(x+1) o sqrt: contiene ceros",
+      TRUE            ~ "ninguna"
+    )
+  ) %>%
+  ungroup() %>%
+  transmute(
+    variable        = skim_variable,
+    mean            = numeric.mean,
+    sd              = numeric.sd,
+    cv,
+    skewness        = round(skewness, 2),
+    medcouple       = round(medcouple, 2),
+    kurtosis        = round(kurtosis, 2),
+    pct_outliers    = percent(prop_outliers, accuracy = 0.1),
+    iqr,
+    histograma      = numeric.hist,
+    transform_rec   = transform_rec
+  )
+
+  knitr::kable(
+    numeric_eda,
+    digits = 2,
+    caption = "Análisis extendido de variables numéricas"
+  )
+
+```
+
+> **Nota sobre las medidas de asimetría:** En este análisis se reportan dos métricas complementarias para evaluar la asimetría de las variables numéricas:
+>
+> -   `skewness` corresponde al coeficiente de asimetría muestral ($g_1$), una medida **paramétrica** que mide la forma de la distribución en función del sesgo respecto a la media (mediante el tercer momento central muestral). Es sensible a valores atípicos (*outliers*) y capta la **asimetría en las colas**.
+> -   `medcouple`: es un **estadístico no paramétrico y robusto** que mide la asimetría del “cuerpo central" de la distribución, sin verse afectado por outliers.
+>
+> Dado que ambas métricas responden a diferentes aspectos de la forma de la distribución, pueden arrojar resultados aparentemente contradictorios:
+>
+> -   En variables con muchos ceros y algunos valores extremos altos (como `Pool_Area` o `Misc_Val`), el `medcouple` puede ser **negativo** (indicando que la masa principal está a la derecha), mientras que el `skewness` será **positivo** por la presencia de colas largas hacia la derecha.
+>
+> -   En otros casos, como `Kitchen_AbvGr`, aunque la media y la mediana están alineadas (dando idea de simetría), el `skewness` puede ser alto por la naturaleza discreta de la variable (muchos 1 y pocos valores mayores).
+>
+> Por ello, **es recomendable interpretar ambas medidas en conjunto**: `skewness` capta simetría global, incluyendo extremos, y `medcouple` resume la simetría de la parte mas densa de la distribución. Usarlas juntas da una visión más completa sobre la simetría de cada variable.
+
+### Calidad de Datos y Ausencia Estructural
+
+El tratamiento de valores faltantes es una etapa clave del preprocesamiento en proyectos de datos, ya que afecta directamente las decisiones de modelado, la validez de los patrones descubiertos y la capacidad de generalización de los modelos. No todos los modelos toleran valores faltantes, y su presencia puede introducir sesgos o errores si no se trata de forma adecuada (transformaciones). Como veremos, este conjunto no contiene valores faltantes explícitos, codificaciones que indican ausencia estructural, con el objetivo de tomar decisiones informadas para su tratamiento posterior.
+
+Falta presentar resultados esperados a partir de la literatura relevante existente (Paper "Ames, Iowa: Alternative to the Boston Housing Data" y Kaggle notebooks) y contrastar resultados.
+
+En esta sección abordamos:
+
+-   Valores faltantes explícitos (`NA`)
+-   Codificaciones especiales como `"None"`, `"No_"`, y ceros estructurales en variables numéricas
+-   Ausencia estructural implícita a partir del contexto de la variable
+
+Además, se documentan decisiones preliminares sobre imputación, transformación o recodificación para trazabilidad futura.
+
+#### Valores faltantes explícitos (*missing values*)
+
+```{r missing_values}
+# Resumen de NAs
+n_obs <- nrow(ames_data)
+na_summary <- ames_data %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "n_na") %>%
+  filter(n_na > 0) %>%
+  mutate(pct = round(100 * n_na / n_obs, 2)) %>%
+  arrange(desc(pct))
+
+# Tabla vacía
+# knitr::kable(na_summary, caption = "Variables con valores faltantes")
+cat("Número de variables con NA:", nrow(na_summary), "\n")
+```
+
+> No se detectan *missing values* explícitos en el conjunto, lo que evita imputaciones tradicionales y nos lleva a las codificaciones especiales.
+
+#### Variables categóricas: codificaciones especiales
+
+Para un listado exhaustivo de todos los niveles de las variables categóricas, véase la sección "Variables categóricas" del análisis descriptivo univariado.
+
+##### Codificaciones de ausencia
+
+Las variables categóricas que indican ausencia estructural son aquellas que el data entry representa la ausencia de la característica usando strings como "None" o "No\_\*".
+
+```{r}
+# Niveles que indican ausencia
+none_levels <- c("None", "No_Alley_Access", "No_Pool", "No_Fence", "No_Garage", "No_Basement")
+
+ames_data %>%
+  select(where(is.factor)) %>%
+  summarise(across(everything(), ~ sum(. %in% none_levels))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "n_none") %>%
+  filter(n_none > 0) %>%
+  mutate(percent = percent(n_none / n_obs, accuracy = 0.1)) %>%
+  arrange(desc(n_none/ n_obs)) %>%
+  select(-n_none) %>%
+  knitr::kable(caption = "Variables categóricas con niveles que indican ausencia estructural")
+```
+
+> Todos los lineamientos relativos a la consolidación de niveles en variables categóricas (alta cardinalidad, agrupación de niveles raros, binarización, etc.) se encuentran ahora en **Recomendaciones de preprocesamiento** dentro de la subsección **Reagrupación de niveles en categóricas**, con ejemplos y tablas que explicitan la estrategia de recodificación para cada caso.
+
+#### Variables numéricas: ceros estructurales
+
+En el Ames Housing Dataset, algunos ceros en variables numéricas no representan valores cuantitativos reales, sino que indican la **ausencia estructural** de una característica. Por ejemplo, un valor `0` en `Garage_Area` implica que no hay garaje, y en `MasVnr_Area`, que no hay revestimiento de mampostería. Esta interpretación está respaldada por variables categóricas asociadas como `Garage_Type == "None"` o `MasVnr_Type == "None"`.
+
+> Como se señala en varios notebooks de Kaggle, "el valor 0 puede estar indicando que el criterio no aplicaba".
+
+Es importante tener en cuenta esta semántica al transformar, imputar o escalar estas variables, ya que estos ceros no deben tratarse como valores numéricos ordinarios.
+
+A continuación se muestra la proporción de ceros estructurales en variables numéricas:
+
+```{r}
+# Porcentaje de observaciones `0` en variables numéricas
+ames_data %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), ~ mean(. == 0, na.rm = TRUE))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "zeros_prop") %>%
+  filter(zeros_prop > 0) %>%
+  mutate(pct_zeros = percent(zeros_prop, accuracy = 0.1)) %>%
+  arrange(desc(zeros_prop)) %>%
+  select(-zeros_prop) %>%
+  knitr::kable(caption = "Proporción de ceros estructurales en variables numéricas")
+```
+
+##### Mapeo de variables y métricas asociadas
+
+A continuación se exploran pares de variables categóricas (`cat_var`) y numéricas (`num_var`) que presentan un comportamiento estructural conjunto. En estos casos, el valor `"None"` en la variable categórica suele coincidir con un valor `0` en la numérica, lo que refuerza la interpretación del cero como indicador de ausencia de la característica.
+
+```{r}
+pares <- list(
+  c("Garage_Type",     "Garage_Area"),
+  c("Garage_Cond",     "Garage_Area"),
+  c("Bsmt_Cond",       "Total_Bsmt_SF"), 
+  c("Bsmt_Exposure",   "Total_Bsmt_SF"), 
+  c("Pool_QC",         "Pool_Area"),
+  c("Mas_Vnr_Type",     "Mas_Vnr_Area"),
+  c("Misc_Feature",    "Misc_Val")
+)
+
+# Número total de observaciones
+n_obs <- nrow(ames_data)
+
+# Función que, dado un par (cat_var, num_var), devuelve un tibble con métricas
+resumen_pareado <- function(par) {
+  cat_var <- par[1]
+  num_var <- par[2]
+
+  # Filtrar none / cero
+  df <- ames_data %>%
+    mutate(
+      is_none = .data[[cat_var]] %in% none_levels,
+      is_zero = .data[[num_var]] == 0
+    )
+
+  n_none        <- sum(df$is_none,    na.rm = TRUE)
+  n_zero        <- sum(df$is_zero,    na.rm = TRUE)
+  n_none_zero   <- sum(df$is_none & df$is_zero, na.rm = TRUE)
+
+  tibble(
+    cat_var              = cat_var,
+    num_var              = num_var,
+    n_none               = n_none,
+    pct_none             = percent(n_none / n_obs, accuracy = 0.1),
+    n_zero               = n_zero,
+    pct_zero             = percent(n_zero / n_obs, accuracy = 0.1),
+    n_none_zero          = n_none_zero,
+    pct_zero_given_none  = if (n_none>0) percent(n_none_zero / n_none, accuracy = 0.1) else NA_real_,
+    pct_none_given_zero  = if (n_zero>0) percent(n_none_zero / n_zero, accuracy = 0.1) else NA_real_
+  )
+}
+
+# Mapeamos y combinamos en un solo data.frame
+tabla_ausencia <- map_dfr(pares, resumen_pareado)
+
+knitr::kable(
+  tabla_ausencia,
+  caption = "Métricas de ausencia estructural por par (None vs 0)",
+  col.names = c(
+    "Var. Categ.", "Var. Num.",
+    "count None", "pct None",
+    "count 0",    "pct 0",
+    "count None∧0",
+    "pct 0|None", "pct None|0"
+  )
+)
+```
+
+> Esta tabla permite verificar la consistencia interna del dataset y orientar decisiones de ingeniería de variables, especialmente para `Garage_Area`, `Total_Bsmt_SF` y `Mas_Vnr_Area`, que presentan asociaciones estructurales claras con variables categóricas y alta correlación con `Sale_Price`.
+>
+> Las recomendaciones específicas (creación de indicadores binarios, transformaciones logarítmicas, generación de interacciones, y recodificación de ceros como `NA`) se consolidan en la sección **Ingeniería de variables y transformaciones**, junto con una tabla resumen de problemas detectados y acciones propuestas.
+
+#### Duplicados
+
+No existe variable `Id` en el conjunto, por lo que no se puede validar unicidad de filas por identificador. Validaremos unicidad de filas por fila completa.
+
+```{r duplicates}
+# Validar unicidad de Id si existiera o por fila completa
+n_duplicadas <- ames_data %>% duplicated() %>% sum()
+cat("Número de filas duplicadas:", n_duplicadas, "\n")
+```
+
+> No se detectan filas duplicadas exactas.
+
+
+# Prompt: This is a placeholder
+
+okay ahora para todas las tablas asegurate que muestre siempre el top 10 de todo. y aparte, al final de eso, dame los chunks originales para incluir en 09-appendix.qmd con un nombre de chunk explicito asi puedo referenciarlas  usando cross-referencing con captions y `@id`

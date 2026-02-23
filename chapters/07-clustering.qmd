@@ -1,0 +1,25 @@
+---
+title: "Clustering de Viviendas"
+---
+
+## 7.1 k-means
+
+- Selección de variables  
+- Determinar número óptimo de clusters (método del codo, silhouette).
+
+```{r}
+# placeholder: kmeans()
+```
+
+## 7.2 Clustering Jerárquico
+
+* Enlace promedio / Ward
+* Dendrograma interpretado
+
+```{r}
+# placeholder: hclust()
+```
+
+## 7.3 Perfilado de Clusters
+
+* Comparación de `Sale_Price` y features clave por cluster.

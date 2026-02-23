@@ -1,0 +1,189 @@
+---
+title: "Apéndice de Tablas"
+---
+
+```{r}
+#| label: load-data
+#| message: false
+#| tbl-cap: "Cargar el conjunto Ames y guardarlo como tibble"
+# Load dependencies
+library(modeldata)  # Conjunto Ames housing
+library(skimr)      # Análisis descriptivo
+
+# Cargar el conjunto Ames y guardarlo como tibble
+data(ames)
+ames_raw <- as_tibble(ames)
+```
+
+## Paneo inicial completo
+
+A continuación, se presentan las tablas completas correspondientes al paneo inicial del dataset Ames, con métricas globales y conteos de variables numéricas y categóricas.
+
+```{r}
+#| label: tbl-metrics-global
+#| tbl-cap: "Métricas globales del conjunto Ames"
+n_obs         <- nrow(ames_raw)
+n_vars        <- ncol(ames_raw)
+n_na_total    <- sum(is.na(ames_raw))
+n_duplicated  <- sum(duplicated(ames_raw))
+
+tibble(
+  metric = c("Observaciones", "Variables", "NAs explícitos", "Filas duplicadas"),
+  value  = c(n_obs,          n_vars,        n_na_total,         n_duplicated)
+  ) %>% 
+  kable()
+```
+
+> Como muestra la @tbl-metrics-global, el dataset tiene 2930 observaciones y 74 variables.
+
+## Tabla de tipos
+
+```{r}
+#| label: load-dict
+#| echo: false
+ames_dict <- read_csv("../data/data-dictionary.csv", show_col_types = FALSE) %>%
+  # renombramos las columnas del CSV a nuestro esquema interno
+  rename(
+    description    = description,
+    tipo_semantico = type
+  ) %>%
+  select(variable, description, tipo_semantico)
+```
+
+```{r}
+#| label: tbl-type-vs-semantic
+#| tbl-cap: "Distribución conjunta: clase skimr vs. tipo semántico"
+
+skim_summary <- skim(ames_raw) # tibble con resúmenes skimr
+var_types <- skim_summary %>%
+  transmute(variable = skim_variable, clase = skim_type)
+
+joined <- var_types %>%
+  left_join(ames_dict, by = "variable")
+
+combo_long <- joined %>%
+  count(clase, tipo_semantico, name = "n_variables") %>%
+  arrange(clase, desc(n_variables))
+
+combo_long %>% kable()
+```
+
+> Tabla completa en @tbl-type-vs-semantic.
+
+## Clasificación semántica de variables numéricas
+
+```{r}
+#| label: tbl-num-classification
+#| tbl-cap: "Clasificación semántica de variables numéricas con cardinalidad"
+
+create_num_classification_table(ames_dict, ames_raw)
+```
+
+> Tabla completa en @tbl-num-classification.
+
+## Clasificación semántica de variables categóricas
+
+```{r}
+#| label: tbl-cat-classification
+#| tbl-cap: "Clasificación semántica de variables categóricas: niveles y conteos principales"
+
+create_cat_classification_table(ames_dict, skim_summary)
+```
+
+> Tabla completa en @tbl-cat-classification.
+
+## Niveles de variables categóricas
+
+```{r}
+#| tbl-cap: "Niveles de algunas variables categóricas"
+vars = c(
+  "Neighborhood",
+  "House_Style",
+  "MS_SubClass",
+  "MS_Zoning",
+  "Overall_Cond",
+  "Garage_Type",
+  "Garage_Cond",
+  "Garage_Finish",
+  "Exter_Cond",
+  "Bsmt_Cond",
+  "Sale_Condition",
+  "Mas_Vnr_Type")
+create_cat_levels_table(ames_dict, skim_summary, ames_raw, vars)
+```
+
+::: {.callout-caution}
+## Cuidado
+El conjunto tiene demasiadas variables categóricas para mostrarlas todas con todos sus niveles.
+:::
+
+::: {.callout-note collapse="true"}
+## Ver todas las variables categóricas con todos sus niveles
+```{r}
+#| label: tbl-cat-levels
+#| tbl-cap: "Distribución completa de niveles de variables categóricas con descripción y tipo semántico"
+
+create_cat_levels_table(ames_dict, skim_summary, ames_raw)
+```
+:::
+
+## Ausencia estructural en variables categóricas
+
+```{r}
+#| label: tbl-categorical-absence
+#| tbl-cap: "Variables categóricas con niveles que indican ausencia estructural"
+
+create_cat_absence_table(ames_dict, ames_raw)
+```
+
+> Detalles en @tbl-categorical-absence.
+
+## Ceros en variables numéricas
+
+```{r}
+#| label: tbl-zeros
+#| tbl-cap: "Proporción de ceros en variables numéricas (con tipo semántico)"
+
+create_zero_proportion_table(ames_dict, ames_raw)
+```
+
+> Consulta la @tbl-zeros para ver el detalle de ceros.
+
+## Análisis de ausencias combinadas
+
+```{r}
+#| label: tbl-absence-pair
+#| tbl-cap: "Métricas de ausencia estructural por par (None vs 0)"
+
+pares <- list(
+  c("Garage_Type",     "Garage_Area"),
+  c("Garage_Cond",     "Garage_Area"),
+  c("Bsmt_Cond",       "Total_Bsmt_SF"), 
+  c("Bsmt_Exposure",   "Total_Bsmt_SF"), 
+  c("Pool_QC",         "Pool_Area"),
+  c("Mas_Vnr_Type",     "Mas_Vnr_Area"),
+  c("Misc_Feature",    "Misc_Val")
+)
+
+create_absence_pair_table(ames_raw, pares)
+```
+
+### Discrepancia: presente pero cero
+
+Casos donde la categoría indica presencia pero el valor numérico es 0.
+
+```{r}
+#| label: tbl-present-but-zero
+#| tbl-cap: "Codificaciones de presencia pero valor cero"
+create_present_but_zero_table(ames_raw, ames_dict, pares)
+```
+
+### Discrepancia: ausente pero positivo
+
+Casos donde la categoría indica ausencia pero el valor numérico es > 0.
+
+```{r}
+#| label: tbl-absent-but-positive
+#| tbl-cap: "Codificaciones de ausencia pero valor positivo"
+create_absent_but_positive_table(ames_raw, ames_dict, pares)
+```

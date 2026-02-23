@@ -1,0 +1,26 @@
+---
+title: "Exploración de Datos (EDA)"
+---
+
+## 5.1 EDA Univariado
+
+### Variables Numéricas
+```{r}
+# placeholder: histograma y estadísticos de ejemplo
+```
+
+### Variables Categóricas
+
+```{r}
+# placeholder: boxplot de Sale_Price por Neighborhood
+```
+
+## 5.2 EDA Multivariado
+
+* Correlaciones entre variables numéricas (matriz resumida).
+* Scatterplots selectivos con tendencia lineal.
+* Boxplots de variables categóricas relevantes.
+
+```{r}
+# placeholder: función para scatter + wrap_plots
+```

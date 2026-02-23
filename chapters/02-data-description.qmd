@@ -1,0 +1,227 @@
+---
+title: "Descripción inicial de los datos"
+subtitle: "Descripción general de Ames: estructura, ausencias y codificaciones"
+---
+
+```{r}
+#| label: dependencies
+#| echo: false
+library(modeldata) # Conjunto Ames housing
+library(skimr)      # Análisis descriptivo
+```
+
+```{r}
+#| label: load-data
+data(ames) # Cargar el conjunto Ames
+ames_raw <- as_tibble(ames)
+```
+
+En este capítulo presentamos únicamente una foto inicial del dataset Ames antes de cualquier limpieza o transformación. Aquí describimos sus dimensiones, estructura de variables, y las codificaciones de ausencia.
+
+## Origen y contexto
+
+El conjunto de datos utilizado en este análisis corresponde a una versión curada del clásico *Ames Housing*, originalmente recopilado y difundido por Dean De Cock [@ames_decock_2011] como una alternativa moderna al conjunto *Boston Housing*. Este dataset documenta transacciones inmobiliarias residenciales ocurridas entre los años 2006 y 2010 en la ciudad de Ames, ubicada en el estado de Iowa (EE. UU.). A través de 2.930 observaciones, se registran características físicas, cualitativas y cuantitativas de propiedades vendidas en ese período.
+
+La ciudad de Ames —una localidad intermedia de aproximadamente 59.000 habitantes según el Censo de 2010, ofrece un mercado inmobiliario heterogéneo, con marcadas diferencias en calidades constructivas (variable `Overall_Qual`), tipologías edilicias (variable `House_Style`), tamaños (variable `Gr_Liv_Area`), ubicación geográfica (variable `Neighborhood`) y precios (variable `Sale_Price`). Estas variaciones generan una alta dispersión tanto en las variables numéricas como en las categóricas, lo cual hace del conjunto una base rica para la exploración estadística y el modelado predictivo. En particular, el precio de venta de las propiedades varía entre \$12.789 y \$755.000, distribuyéndose a lo largo de más de 25 barrios con dinámicas y perfiles heterogéneos.
+
+## Fuente de los datos 
+
+En nuestro análisis trabajaremos con la versión curada del conjunto `ames`, incluida en el paquete `{modeldata}` de R [@modeldata2024]. Esta versión conserva las 2.930 observaciones del artículo, pero incluye únicamente 72 de las 80 variables contempladas en el conjunto original documentado por De Cock [@ames_datadict_2011]. Esta exclusión busca preservar la validez del modelado evitando variables que podrían funcionar como representaciones encubiertas del resultado. La exclusión de estas variables fue deliberada por parte de los autores del paquete, debido a su alta colinealidad con la variable objetivo `Sale_Price`.[^exclusion]. A cambio, esta versión incorpora dos variables nuevas: `Longitude` y `Latitude`, que permiten considerar la ubicación geográfica de las propiedades.
+
+> Hacemos una revisión detallada del estado de limpieza inicial en [el siguiente capítulo](03-data-cleaning.qmd#revision-del-estado-de-limpieza-inicial).
+
+[^exclusion]: En términos estadísticos, estas variables explican una proporción considerable de la varianza observada en el precio de venta, lo que evidencia una asociación fuerte entre ellas y el resultado. Al actuar como proxies encubiertos del precio, su inclusión como predictores podría introducir sesgos por endogeneidad, comprometiendo la interpretación causal y la potencia explicativa de los modelos.
+    
+    Lista completa de variables excluidas:
+    
+    -   `Order` (número de observación)
+    -   `PID` (identificador de parcela)
+    -   `Overall Qual` (calidad general de la casa)
+    -   `Exter Qual` (calidad del material exterior)
+    -   `Bsmt Qual` (calidad/altura del sótano)
+    -   `Low Qual Fin SF` (superficie de acabado de baja calidad)
+    -   `KitchenQual` (calidad de la cocina)
+    -   `FireplaceQu` (calidad de la chimenea)
+    -   `Garage Yr Blt` (año de construcción del garaje)
+    -   `GarageQual` (calidad del garaje)
+
+### Diccionario de variables
+
+```{r}
+#| label: load-dict
+#| echo: false
+ames_dict <- read_csv("../data/data-dictionary.csv", show_col_types = FALSE) %>%
+  # renombramos las columnas del CSV a nuestro esquema interno
+  rename(
+    description    = description,
+    tipo_semantico = type
+  ) %>%
+  select(variable, description, tipo_semantico)
+```
+
+{{< embed 09-data-dictionary.qmd#tbl-data-dictionary-first10 echo=TRUE >}}
+
+Para acceder al diccionario completo ver [el diccionario de variables del apéndice](09-data-dictionary.html).
+
+## Motivación del análisis
+
+Desde una perspectiva estadística, el conjunto combina **variables numéricas continuas, numéricas discretas, ordinales y categóricas nominales**, muchas de las cuales presentan ceros estructurales o codificaciones especiales como `"None"` para representar la ausencia de una característica. Esta codificación implícita de ausencias debe ser cuidadosamente tratada antes de aplicar métodos estadísticos. Asimismo, se observan **correlaciones sustantivas entre predictores** (como entre `Gr_Liv_Area` y `TotRms_AbvGrd`) y ciertos **patrones de heterocedasticidad** respecto al precio, lo cual motiva un análisis riguroso en etapas posteriores del estudio.
+
+Comprender la formación de precios en mercados inmobiliarios locales, como el de Ames, permite observar cómo los compradores valoran distintos atributos de una propiedad. En este sentido económico, el precio de venta funciona como una expresión agregada de esas valoraciones, revelando la utilidad marginal atribuida a características como el tamaño del terreno, la calidad constructiva o la ubicación.
+
+Explorar esta variabilidad no solo aporta al entendimiento académico de la estructura de precios, sino que también provee información útil para agentes del mercado inmobiliario, como compradores, vendedores y tasadores. Además, los resultados derivados de este tipo de análisis pueden servir de apoyo al diseño de políticas públicas en materia de vivienda y ordenamiento urbano, p. ej. si se identifican patrones de inequidad o segmentación territorial.
+
+Por todo lo anterior, el conjunto *Ames Housing* constituye una fuente ideal para aplicar técnicas de estadística descriptiva y análisis multivariado, permitiendo tanto la visualización estructurada de datos complejos como el ajuste de modelos explicativos y predictivos. Este enfoque será central en el desarrollo del presente proyecto.
+
+## Paneo inicial
+
+### Resumen básico
+
+{{< embed 10-tbl-appendix.qmd#tbl-metrics-global echo=TRUE >}}
+
+> Como muestra la @tbl-metrics-global, el conjunto tiene 2930 observaciones y 74 variables.
+
+## Estructura general y tipo semántico
+
+Este análisis se desarrolla en R base + tidyverse, que emplean el sistema de clases **S3**. En este contexto, cada variable posee una **clase** (`class()`) y un **tipo primitivo** (`typeof()`), pero también se le puede asignar un **tipo semántico**, que representa su rol o significado en el análisis aplicado.
+
+- La **clase** de una variable es una etiqueta de alto nivel como `numeric`, `factor` o `character`, determinada automáticamente por R al importar los datos.
+- El **tipo primitivo** indica cómo se almacena internamente (por ejemplo, `"double"` para `numeric`, `"integer"` para `factor`).
+- El **tipo semántico** es una clasificación analítica adicional que define cómo debe tratarse la variable según su función en el contexto del problema (por ejemplo: magnitud continua, categoría ordinal, conteo discreto).
+
+Esta distinción es fundamental, dos variables pueden compartir la misma clase, pero cumplir roles diferentes en el análisis. Para este proyecto, cada variable fue clasificada manualmente en uno de los siguientes **tipos semánticos**:
+
+- **Continua**: variables que miden magnitudes físicas o monetarias con posibles decimales. Ej.: `Gr_Liv_Area`, `LotFrontage`, `SalePrice`.
+- **Discreta**: variables que representan conteos enteros o unidades discretas. Ej.: `Full_Bath`, `Garage_Cars`, `Year_Built`.
+- **Nominal**: variables categóricas sin orden natural. Ej.: `MS_Zoning`, `Neighborhood`, `Garage_Type`.
+- **Ordinal**: variables categóricas con niveles ordenados pero sin distancia uniforme. Ej.: `Overall_Cond`, `Exter_Cond`, `Kitchen_Qual`.
+
+> La asignación inicial de tipos semánticos se basó en patrones del nombre (`"Area"`, `"SF"`, `"Qual"`, etc.) y la descripción de cada variable. Luego se validó manualmente en base a la documentación original de Dean De Cock (`DataDocumentation.txt`), lo que permitió ajustar ambigüedades o errores de clasificación automática.
+
+A continuación, se muestra la distribución conjunta entre la clase técnica (del paquete `skimr`) de cada variable y su tipo semántico:
+
+{{< embed 10-tbl-appendix.qmd#tbl-type-vs-semantic echo=TRUE >}}
+
+> **Notas**:
+>
+> * Las clases se asignan automáticamente al importar los datos (`read_csv()`).
+> * Las variables `numeric` se almacenan como `"double"`, y las `factor` como `"integer"`.
+> * El tipo semántico guía la exploración visual, la selección de transformaciones y la decisión sobre técnicas de modelado.
+
+### Variables numéricas
+
+Las variables numéricas se identifican técnicamente en R por su clase (`"numeric"` o `"integer"`), pero su tratamiento analítico depende del **tipo semántico** asignado según [el diccionario de variables](09-data-dictionary.html). Este tipo semántico describe el rol conceptual de la variable en el contexto del análisis. Por ejemplo, si representa una magnitud continua (como `Sale_Price` o `Lot_Area`), un conteo discreto (`Full_Bath`), o una codificación categórica ordinal (`Overall_Qual`) que ha sido representada como número.
+
+Presentamos una tabla con:
+
+- Nombre, descripción y el tipo semántico, asignado de acuerdo con el diccionario de variables,
+- La **clase S3** de cada variable numérica (`class()`),
+- Su cardinalidad (número de valores únicos observados).
+
+```{r}
+#| label: num-classification
+#| tbl-cap: "Variables numéricas con mayor cardinalidad"
+vars <- c(
+  "Sale_Price", "Gr_Liv_Area", "Lot_Area", 
+  "Garage_Cars", "Garage_Area", 
+  "Total_Bsmt_SF", "First_Flr_SF", 
+  "Year_Built", "Year_Remod_Add",
+  "Full_Bath", "Bsmt_Full_Bath", "Bsmt_Half_Bath",
+  "TotRms_AbvGrd", "Fireplaces")
+
+create_num_classification_table(ames_dict, ames_raw, vars)
+```
+
+La tabla completa con todas las variables numéricas se encuentra en el apéndice (@tbl-num-classification).
+
+> Observamos que variables como `Garage_Cars`, `Bsmt_Half_Bath` y `Bsmt_Full_Bath` son claramente numéricas discretas, pero fueron importadas como `numeric` (double) en vez de `integer`, a pesar de no tener decimales. Esta inconsistencia no afecta los cálculos pero sí debe considerarse al preparar modelos, ya que puede justificar transformar algunas de estas variables a `factor` u `ordered`.
+
+### Variables categóricas
+
+Las variables categóricas en R suelen estar representadas por objetos de clase `factor`. Esta clase permite manejar variables cualitativas cuyos valores pertenecen a un conjunto finito de niveles, lo que las vuelve aptas para tareas de análisis exploratorio, visualización y modelado supervisado (especialmente clasificación y regresión con variables dummy).
+
+En este análisis adoptamos una distinción conceptual y práctica entre:
+
+- Niveles categóricos regulares, que representan valores informativos válidos.
+- Codificaciones especiales, que requieren tratamiento específico previo a su uso en visualización o modelado.
+
+A continuación se presenta un resumen de las variables categóricas más relevantes del conjunto, ordenadas por cardinalidad (cantidad de niveles) junto con los conteos más frecuentes.
+
+
+```{r}
+#| label: cat-classification
+#| tbl-cap: "Algunas variables categóricas: niveles y counts principales"
+
+skim_summary <- skim(ames_raw)
+
+vars = c(
+  "Neighborhood",
+  "House_Style",
+  "MS_SubClass",
+  "MS_Zoning",
+  "Overall_Cond",
+  "Garage_Type",
+  "Garage_Cond",
+  "Garage_Finish",
+  "Exter_Cond",
+  "Bsmt_Cond",
+  "Mas_Vnr_Type")
+create_cat_classification_table(ames_dict, skim_summary, vars)
+```
+
+La tabla completa para todas las variables categóricas se encuentra en el apéndice (@tbl-cat-classification).
+
+> **Nota:** La tabla anterior presenta un resumen interpretativo útil para identificar variables con alta cardinalidad y posibles niveles espurios o codificaciones no informativas. Estas últimas deben evaluarse cuidadosamente antes de cualquier análisis, ya que R las interpreta por defecto como niveles legítimos del factor. 
+
+### Niveles de variables categóricas
+
+En esta sección se examinan los niveles observados en variables categóricas seleccionadas. Esto incluye no solo los valores típicos (como `"TA"`, `"Gd"`, `"RL"`), sino también aquellas codificaciones especiales como `"None"` o `"No_Garage"` que, aunque formalmente son niveles, **reflejan una ausencia estructural o una respuesta codificada fuera del dominio habitual de la variable**.
+
+Este análisis es clave en la limpieza y el tratamiento semántico de los datos, ya que los modelos estadísticos no distinguen entre niveles sustantivos y codificaciones especiales a menos que se especifiquen explícitamente.
+
+```{r}
+#| label: cat-levels
+#| tbl-cap: "Codificaciones especiales de algunas variables categóricas"
+
+create_cat_levels_table(ames_dict, skim_summary, ames_raw, vars, top_n_levels = 10)
+```
+
+> **Nota:** La tabla anterior muestra los principales niveles en once variables clave, junto con su frecuencia absoluta y relativa. Los niveles con descripciones como `"None"` o `"No_Alley_Access"` deben ser tratados con especial cuidado, ya que pueden implicar ausencia estructural en lugar de una categoría analíticamente relevante.
+
+La tabla completa, con todos los niveles para cada variable categórica del conjunto, se encuentra expandida en el apéndice (@tbl-cat-levels). Allí se proporciona una visión exhaustiva que puede servir tanto para imputaciones como para reclasificaciones o transformaciones posteriores.
+
+## Valores faltantes y duplicados
+
+### Valores faltantes
+
+```{r}
+#| label: missing-values
+#| tbl-cap: "Suma de variables con missing explícitos"
+# Suma de variables con missing explícitos
+ames_raw %>%  
+  summarise(across(where(is.numeric), ~ sum(is.na(.)))) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "n_na") %>% 
+  summarise(sum_n_na = sum(n_na)) %>% 
+  knitr::kable()
+```
+
+> Tras el chequeo de `is.na()` en cada columna, no se detectaron NAs explícitos en las 74 variables.
+
+### Filas duplicadas
+
+```{r}
+#| label: duplicate-check
+#| tbl-cap: "Número de filas duplicadas exactas"
+# Número de filas duplicadas exactas
+ames_raw %>% 
+  summarise(n_duplicated = sum(duplicated(.))) %>% 
+  knitr::kable()
+```
+
+> La verificación de duplicados exactos usando `duplicated()` arroja 0 filas repetidas.
+
+## Conclusión
+
+Este informe ha establecido la base estructural del conjunto de datos, describiendo sus variables en términos de clase técnica (`numeric`, `factor`, etc.) y tipo semántico (`continua`, `discreta`, `ordinal`, `nominal`). Con esta caracterización inicial completa, estamos en condiciones de avanzar hacia una fase de limpieza sistemática que asegure consistencia del análisis exploratorio, selección apropiada de métodos estadísticos e interpretabilidad y robustez en las etapas posteriores del análisis.
+
+> Durante la exploración inicial, también se detectaron **indicios de codificaciones especiales** tanto en variables numéricas (valores cero que indican ausencia de componente) como en categóricas (niveles como `"None"` o `"No_Garage"`). Estos casos tendrán tratamiento explícito en el capítulo de limpieza y preprocesamiento de datos.

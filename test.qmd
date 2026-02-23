@@ -1,0 +1,87 @@
+## 2. Capítulo Quarto: `chapters/04-transformations.qmd`
+
+> Copiá/guardá el siguiente contenido como `chapters/04-transformations.qmd`.
+> Ajustá rutas según tu estructura de proyecto si difieren.
+
+````markdown
+---
+title: "Transformaciones e ingeniería de características"
+subtitle: "Pipeline genérico aplicable a MODEL 1 y MODEL 2 (basado en De Cock 2011)"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: show
+  pdf:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+# Dependencias mínimas
+library(tidyverse)
+library(knitr)
+# (tidymodels se cargará en capítulos de modelado)
+````
+
+```{r}
+#| label: register-transformations
+#| include: false
+# Registrar los chunks del script de funciones
+knitr::read_chunk("../scripts/transformations.R")
+```
+
+## 1. Propósito del capítulo
+
+En el capítulo anterior **limpiamos y armonizamos** el conjunto Ames (`ames_clean`): ceros estructurales → `NA`, alineación categórico-numérica, indicadores `has_*`, etc. Este capítulo documenta y ejecuta **todas las transformaciones genéricas recomendadas por De Cock (2011)** que son pertinentes **tanto para MODEL 1 (modelo simplista) como para MODEL 2 (modelo complejo)**.
+
+Las transformaciones aquí definidas constituyen la **caja de herramientas común** sobre la que luego construiremos estrategias específicas de modelado.
+
+---
+
+## 2. Fundamentación (¿por qué transformar?)
+
+De Cock subraya que la riqueza de variables continuas en Ames ofrece “muchas oportunidades” para que los estudiantes exploren **diferentes maneras de usar y combinar variables** en modelos de precios. ([jse.amstat.org][1])
+
+También advierte que los niveles categóricos originales pueden requerir recodificación y, según el nivel del curso, los instructores pueden **convertir variables categóricas en dummies** o brindar pistas sobre cómo combinarlas. ([jse.amstat.org][1])
+
+Para el **MODEL 1**, permite “transformaciones de potencia” (raíz cuadrada, log, inversa, cuadrado, etc.) sobre las variables originales, pero prohíbe interacciones y usar la misma variable en múltiples formas (x y x² simultáneamente), a fin de concentrar el esfuerzo en la interpretación. ([jse.amstat.org][1])
+
+Además, recomienda **eliminar observaciones extrema­das** con `Gr_Liv_Area > 4000` sq ft (cinco casos) antes de entregar el conjunto a estudiantes, dado que incluyen ventas parciales y viviendas inusualmente grandes. ([jse.amstat.org][1])
+
+Para cursos introductorios, sugiere **filtrar solo ventas “Normal”** y, si se desea evitar transformar la respuesta, limitarse a viviendas con `Gr_Liv_Area ≤ 1500` para reducir heterocedasticidad; alternativamente, aplicar una **transformación de raíz cuadrada a SalePrice** para estabilizar la varianza. ([jse.amstat.org][1])
+
+Muestra un ejemplo de modelo múltiple donde convierte `Fireplaces` en una variable binaria **FireYN** (1/0), ilustrando cómo mezclar continuas, discretas y dummies. ([jse.amstat.org][1])
+
+También recomienda **incluir Neighborhood como conjunto de dummies** para mejorar la interpretación de coeficientes continuos. ([jse.amstat.org][1])
+
+En niveles más avanzados, sugiere **colapsar escalas ordinales extensas**, manipular nombres de niveles para fijar la categoría base en software que usa orden alfabético y **tratar variables discretas como covariables numéricas** para evitar coeficientes erráticos (ej., número de baños). ([jse.amstat.org][1])
+
+Finalmente, provee un benchmark: `Neighborhood + (Total_Bsmt_SF + Gr_Liv_Area)` explica \~80% de la variación en `SalePrice`, lo que motiva la creación de **Total\_SqFt** como característica derivada clave. ([jse.amstat.org][1])
+
+---
+
+## 3. Resumen de transformaciones genéricas basadas en De Cock
+
+La siguiente tabla resume qué transformaciones se consideran **core** (recomendadas/ejemplificadas por De Cock) y cuáles están **permitidas en MODEL 1**, **permitidas en MODEL 2**, o **sólo sugeridas para ciertos niveles docentes**.
+
+| Transformación                                                       | Descripción                                                      | Core De Cock | MODEL 1 | MODEL 2 | Nota                                                |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------- | :----------: | :-----: | :-----: | --------------------------------------------------- |
+| Filtro outliers `Gr_Liv_Area > 4000`                                 | Excluir 5 observaciones extremas/ventas parciales.               |       ✔      |    ✔    |    ✔    | Recomendado antes de modelar. ([jse.amstat.org][1]) |
+| Subconjunto intro (`Sale_Condition == Normal`; `Gr_Liv_Area ≤ 1500`) | Variante didáctica para cursos intro; reduce heterocedasticidad. |       ✔      |  (opt)  |  (opt)  | O usar √SalePrice. ([jse.amstat.org][1])            |
+| Transformación de potencia (√, log, 1/x, x²)                         | Permitidas en MODEL 1; ayudan a linealizar.                      |       ✔      |    ✔    |    ✔    | Sin interacciones en M1. ([jse.amstat.org][1])      |
+| Total\_SqFt = Total\_Bsmt\_SF + Gr\_Liv\_Area                        | Predictor de tamaño agregado; explica gran varianza.             |       ✔      |    ✔    |    ✔    | Benchmark \~80% R². ([jse.amstat.org][1])           |
+| FireYN (Fireplaces>0)                                                | Dummy de chimenea; ejemplo modelo mixto.                         |       ✔      |    ✔    |    ✔    | ([jse.amstat.org][1])                               |
+| Neighborhood dummies                                                 | Capturar localización; mejora interpretación.                    |       ✔      |    ✔    |    ✔    | ([jse.amstat.org][1])                               |
+| Colapsar escalas ordinales                                           | Reducir categorías extensas/monotonicidad.                       |       ✔      |    ✔    |    ✔    | ([jse.amstat.org][1])                               |
+| Reetiquetar baseline (prefijo ‘z\_’)                                 | Controlar categoría de referencia en software.                   |       ✔      |    ✔    |    ✔    | ([jse.amstat.org][1])                               |
+| Tratar conteos como numéricos                                        | Efectos lineales por unidad (baños, autos garaje).               |       ✔      |    ✔    |    ✔    | ([jse.amstat.org][1])                               |
+
+---
+
+
+[1]: https://jse.amstat.org/v19n3/decock.pdf "Examples:"

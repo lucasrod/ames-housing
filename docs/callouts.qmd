@@ -1,0 +1,178 @@
+---
+title: "Bloques de llamada (Callout) en Quarto"
+---
+
+# Introducción
+
+En este documento exploramos los **callout blocks** de Quarto, también llamados “admoniciones”. Son recuadros que destacan información con diferentes propósitos: notas, consejos, advertencias, etc.
+
+# Tipos de callouts disponibles
+
+Quarto incluye cinco estilos predefinidos. Para cada uno indicamos la sintaxis y un ejemplo:
+
+## 1. Note
+
+Uso general para información adicional.
+
+``` markdown
+::: {.callout-note}
+Este es un recuadro de tipo **note** para contenido informativo.
+:::
+```
+
+### Ejemplo
+
+::: callout-note
+Este es un recuadro de tipo **note** para contenido informativo.
+:::
+
+## 2. Tip
+
+Sugerencia o consejo práctico.
+
+``` markdown
+::: {.callout-tip}
+Este es un recuadro de tipo **tip** con un consejo útil.
+:::
+```
+
+### Ejemplo
+
+::: callout-tip
+Este es un recuadro de tipo **tip** con un consejo útil.
+:::
+
+## 3. Important
+
+Para enfatizar puntos críticos.
+
+``` markdown
+::: {.callout-important}
+Este es un recuadro de tipo **important** para destacar algo esencial.
+:::
+```
+
+### Ejemplo
+
+::: callout-important
+Este es un recuadro de tipo **important** para destacar algo esencial.
+:::
+
+## 4. Warning
+
+Alertas de posibles errores o riesgos.
+
+``` markdown
+::: {.callout-warning}
+Este es un recuadro de tipo **warning** advirtiendo sobre un posible problema.
+:::
+```
+
+### Ejemplo
+
+::: callout-warning
+Este es un recuadro de tipo **warning** advirtiendo sobre un posible problema.
+:::
+
+## 5. Caution
+
+Precauciones con menor urgencia que `warning`.
+
+``` markdown
+::: {.callout-caution}
+Este es un recuadro de tipo **caution** con un aviso de precaución.
+:::
+```
+
+### Ejemplo
+
+::: callout-caution
+Este es un recuadro de tipo **caution** con un aviso de precaución.
+:::
+
+# Personalización de títulos
+
+Puedes agregar un título propio al callout de dos maneras:
+
+1.  **Encabezado interno**
+
+    ``` markdown
+    ::: {.callout-tip}
+    ## ¡Atención!
+    Aquí va un consejo con título.
+    :::
+    ```
+
+### Ejemplo
+
+::: callout-tip
+## ¡Atención!
+
+Aquí va un consejo con título.
+:::
+
+2.  **Atributo `title`**
+
+    ``` markdown
+    ::: {.callout-tip title="¡Atención especial!"}
+    Este callout usa el atributo `title`.
+    :::
+    ```
+
+### Ejemplo
+
+::: {.callout-tip title="¡Atención especial!"}
+Este callout usa el atributo `title`.
+:::
+
+# Bloques colapsables
+
+Para ocultar el contenido por defecto y permitir expandirlo:
+
+``` markdown
+::: {.callout-caution collapse="true"}
+## Haz clic para ver más
+Contenido inicialmente oculto.
+:::
+```
+
+### Ejemplo
+
+::: {.callout-caution collapse="true"}
+## Haz clic para ver más
+
+Contenido inicialmente oculto.
+:::
+
+# Extensión y estilos personalizados
+
+Si necesitas más tipos o cambiar colores e íconos:
+
+1.  **Definir un extension** de Quarto que registre nuevos `.callout-xxx`.
+
+2.  **Añadir CSS/SCSS** en `_quarto.yml` o en un archivo `.scss`. Por ejemplo:
+
+    ``` scss
+    /* styles.scss */
+    .callout-custom {
+      border-color: #1a73e8;
+      background-color: #e8f0fe;
+      --callout-icon: "⭐";
+    }
+    ```
+
+    Y en el YAML:
+
+    ``` yaml
+    format:
+      html:
+        css: styles.scss
+    ```
+
+Luego usas:
+
+``` markdown
+::: {.callout-custom title="Ejemplo personalizado"}
+Este callout usa estilos definidos por tu CSS.
+:::
+```

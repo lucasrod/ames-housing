@@ -1,0 +1,75 @@
+variable,type,description
+Sale_Price,Continua,Precio de venta en USD
+Gr_Liv_Area,Continua,Área habitable sobre el nivel del suelo (en pies²)
+Total_Bsmt_SF,Continua,Área total del sótano (en pies²)
+First_Flr_SF,Continua,Área del primer piso (en pies²)
+Garage_Cars,Discreta,Capacidad del garaje en autos
+Garage_Area,Continua,Área del garaje (en pies²)
+Full_Bath,Discreta,Baños completos sobre el nivel del suelo
+TotRms_AbvGrd,Discreta,Total de habitaciones sobre el nivel del suelo
+Year_Remod_Add,Discreta,Año de remodelación o adición
+Year_Built,Discreta,Año de construcción original
+MS_SubClass,Nominal,Tipo de vivienda involucrada en la venta
+MS_Zoning,Nominal,Clasificación general de zonificación
+Lot_Frontage,Continua,Metros lineales de frente del terreno
+Lot_Area,Continua,Tamaño del terreno (en pies cuadrados)
+Street,Nominal,Tipo de acceso a la calle
+Alley,Nominal,Acceso por callejón
+Lot_Shape,Ordinal,Forma general del terreno
+Land_Contour,Nominal,Nivel del terreno
+Utilities,Ordinal,Tipo de servicios públicos disponibles
+Lot_Config,Nominal,Configuración del lote
+Land_Slope,Ordinal,Pendiente del terreno
+Neighborhood,Nominal,Ubicación física dentro de Ames
+Condition_1,Nominal,Proximidad a condiciones externas
+Condition_2,Nominal,Proximidad secundaria a condiciones externas
+Bldg_Type,Nominal,Tipo de construcción residencial
+House_Style,Nominal,Estilo arquitectónico de la vivienda
+Overall_Cond,Ordinal,Condición general de la casa
+Roof_Style,Nominal,Estilo del techo
+Roof_Matl,Nominal,Material del techo
+Exterior_1st,Nominal,Material exterior principal
+Exterior_2nd,Nominal,Material exterior secundario
+Mas_Vnr_Type,Nominal,Tipo de revestimiento de mampostería
+Mas_Vnr_Area,Continua,Área del revestimiento de mampostería (en pies²)
+Exter_Cond,Ordinal,Condición del material exterior
+Foundation,Nominal,Tipo de cimientos
+Bsmt_Cond,Ordinal,Condición general del sótano
+Bsmt_Exposure,Ordinal,Nivel de exposición del sótano
+BsmtFin_Type_1,Ordinal,Tipo de acabado principal del sótano
+BsmtFin_SF_1,Continua,Área terminada tipo 1 del sótano (en pies²)
+BsmtFin_Type_2,Ordinal,Segundo tipo de acabado del sótano
+BsmtFin_SF_2,Continua,Área terminada tipo 2 del sótano (en pies²)
+Bsmt_Unf_SF,Continua,Área sin terminar del sótano (en pies²)
+Heating,Nominal,Tipo de calefacción
+Heating_QC,Ordinal,Calidad y estado de la calefacción
+Central_Air,Nominal,Presencia de aire acondicionado central
+Electrical,Ordinal,Sistema eléctrico
+Second_Flr_SF,Continua,Área del segundo piso (en pies²)
+Bsmt_Full_Bath,Discreta,Baños completos en el sótano
+Bsmt_Half_Bath,Discreta,Medios baños en el sótano
+Half_Bath,Discreta,Medios baños sobre el nivel del suelo
+Bedroom_AbvGr,Discreta,Dormitorios sobre el nivel del suelo
+Kitchen_AbvGr,Discreta,Cocinas sobre el nivel del suelo
+Functional,Ordinal,Funcionamiento general del hogar
+Fireplaces,Discreta,Número de chimeneas
+Garage_Type,Nominal,Ubicación del garaje
+Garage_Finish,Ordinal,Terminación interior del garaje
+Garage_Cond,Ordinal,Condición del garaje
+Paved_Drive,Ordinal,Estado del pavimento de entrada
+Wood_Deck_SF,Continua,Área del deck de madera (en pies²)
+Open_Porch_SF,Continua,Área del porche abierto (en pies²)
+Enclosed_Porch,Continua,Área del porche cerrado (en pies²)
+Three_season_porch,Continua,Área del porche de 3 estaciones (en pies²)
+Screen_Porch,Continua,Área del porche con mosquitero (en pies²)
+Pool_Area,Continua,Área de la piscina (en pies²)
+Pool_QC,Ordinal,Calidad de la piscina
+Fence,Ordinal,Calidad de la cerca
+Misc_Feature,Nominal,"Características misceláneas (ej. Elev, Gar2, Othr)"
+Misc_Val,Continua,Valor de las características misceláneas (en USD)
+Mo_Sold,Discreta,Mes de la venta
+Year_Sold,Discreta,Año de la venta
+Sale_Type,Nominal,Tipo de transacción de venta
+Sale_Condition,Nominal,Condición de la venta
+Longitude,Continua,Longitud geográfica (grados decimales)
+Latitude,Continua,Latitud geográfica (grados decimales)

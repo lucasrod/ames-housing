@@ -1,0 +1,19 @@
+---
+title: "Conclusiones y Futuro"
+---
+
+## Principales Hallazgos
+
+- La transformación `log(Sale_Price)` mejora la normalidad y reduce outliers.  
+- `Gr_Liv_Area` y `Neighborhood` explican gran parte de la variación.  
+
+## Limitaciones
+
+- Datos limitados a 2006–2010.  
+- Variables omitidas en el paquete `modeldata`.
+
+## Trabajo Futuro
+
+1. Incluir interacciones no lineales (splines, GAM).  
+2. Ampliar clustering con variables espaciales (lat/long).  
+3. Explorar modelos de ensamblado avanzados (stacking).

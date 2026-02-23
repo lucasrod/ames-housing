@@ -1,0 +1,50 @@
+project:
+  type: book
+
+book:
+  title: "Análisis del Mercado Inmobiliario en Ames, Iowa"
+  subtitle: "Estadística Descriptiva, FCEA-UdelaR"
+  author:
+    - Lucas Rodriguez
+    - Nahir Silva
+  date: "6/28/2025"
+  chapters:
+    - index.qmd
+    - chapters/01-introduction.qmd
+    - chapters/02-data-description.qmd
+    - chapters/03-data-cleaning.qmd
+    - chapters/04-transformations.qmd
+    - chapters/05-eda.qmd
+    - chapters/06-modeling.qmd
+    - chapters/07-clustering.qmd
+    - chapters/08-conclusions.qmd
+  appendices:
+    - chapters/09-appendix.qmd
+    - references.qmd
+
+bibliography: references.bib
+output-file: "Informe_Ames_Housing"
+
+format:
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    code-tools: true
+    code-summary: "Mostrar código"
+    theme:
+      - cosmo
+      - brand
+  pdf:
+    documentclass: scrartcl # scrreprt
+    include-before-body: "titlepage.tex"
+    linestretch: 1.2
+    geometry: margin=1in
+execute:
+  echo:    true
+  warning: true
+  message: false
+
+
+

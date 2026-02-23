@@ -1,0 +1,249 @@
+# Guía de Proyecto Quarto Book
+
+Este documento describe, en términos generales, cómo está organizado el proyecto Quarto de tipo **book**, cuándo y cómo usar los distintos sistemas de referencias cruzadas, y cómo integrar citas bibliográficas con `references.bib`.  
+
+## Estructura general del proyecto
+
+El archivo `_quarto.yml` controla la configuración principal del libro. En tu caso:
+
+```yaml
+project:
+  type: book
+book:
+  title: "Análisis del Mercado Inmobiliario en Ames, Iowa"
+  subtitle: "Estadística Descriptiva, FCEA-UdelaR"
+  author:
+    - Lucas Rodriguez
+    - Nahir Silva
+  date: "6/28/2025"
+  output-file: "Informe_Ames_Housing"
+  chapters:
+    - index.qmd
+    - chapters/01-introduction.qmd
+    - chapters/02-data-description.qmd
+    - chapters/03-data-cleaning.qmd
+    - chapters/04-transformations.qmd
+    - chapters/05-eda.qmd
+    - chapters/06-modeling.qmd
+    - chapters/07-clustering.qmd
+    - chapters/08-conclusions.qmd
+  appendices:
+    - chapters/09-tbl-appendix.qmd
+    - chapters/references.qmd
+bibliography: references.bib
+crossref:
+  fig-title: "Figura" # Título de la figura
+  fig-prefix: "figura" # Prefijo de apoyo a la referencia
+  tbl-title: "Tabla" # Título de la tabla
+  tbl-prefix: "tabla" # Prefijo de apoyo a la referencia
+  title-delim: ":"  # Delimitador tras "Tabla A.1"
+format:
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    code-summary: "Mostrar código"
+    theme:
+      - cosmo
+      - brand
+execute:
+  echo:    true
+  warning: true
+  message: false
+```
+
+* **`chapters:`** define los `.qmd` que forman el cuerpo numerado.
+* **`appendices:`** agregan contenido no numerado (Apéndices y Referencias).
+* **`bibliography:`** apunta al archivo BibTeX con tus fuentes.
+
+## Referencias cruzadas: dos sistemas
+
+En Quarto Book existen dos maneras de crear enlaces internos:
+
+### Anclas en encabezados (`{#id}`)
+
+* **Uso**: para referenciar **secciones** o apartados de texto.  
+* **Implementación**: añadís `{#mi-seccion}` al encabezado:
+
+  ```markdown
+  ## Resultados del EDA {#sec-resultados}
+  ```
+
+* **Enlace**:
+
+  ```markdown
+  Ver la sección [Resultados del EDA](#sec-resultados).
+  ```
+
+* **Características**:
+
+  * No hay numeración automática.
+  * Funciona como un simple hyperlink.
+
+### Cross-referencing con captions y `@id`
+
+* **Uso**: para referenciar **objetos numerados** — tablas, figuras, ecuaciones, etc.
+* **Implementación**:
+
+  1. **En el encabezado del chunk** añadís:
+
+     ```yaml
+     #| label: tbl-mi-etiqueta      # (prefijo `tbl-` obligatorio para tablas)
+     #| tbl-cap: "Texto de la leyenda"
+     ```
+  2. **O bien**, dentro de `kable()`:
+
+     ```r
+     knitr::kable(
+       mi_df,
+       caption = "Leyenda de la tabla {#tbl-mi-etiqueta}"
+     )
+     ```
+  3. **Referenciación en el texto**:
+
+     ```markdown
+     Como muestra la Tabla @tbl-mi-etiqueta, …
+     ```
+* **Características**:
+
+  * Numeración automática acorde al capítulo o Apéndice (e.g. “Tabla 2.1”, “Tabla A.1”).
+  * Funciona en HTML, PDF y DOCX.
+  * Permite generar índices de tablas/figuras activando `book: { toc: { figure: true, table: true } }` en el YAML.
+
+## ¿Cuándo usar cada sistema?
+
+| Tipo de contenido             | Sistema recomendado               |
+| ----------------------------- | --------------------------------- |
+| Apartados, secciones de texto | Anclas en encabezados `{#id}`     |
+| Tablas, figuras, ecuaciones   | Captions + chunks nombrados `@id` |
+
+> **No mezclar** ambos métodos para un mismo objeto.
+
+## Ejemplos concretos en nuestro proyecto
+
+### En `chapters/09-tbl-appendix.qmd`
+
+::: {.verbatim}
+```r
+#| label: tbl-metrics-global
+#| tbl-cap: "Métricas globales del conjunto Ames"
+n_obs        <- nrow(ames_raw)
+…
+knitr::kable()
+```
+
+
+> Como muestra la Tabla @tbl-metrics-global, el dataset tiene 2930 observaciones y 74 variables.
+
+Y para la distribución de clases:
+
+::: {.verbatim}
+```r
+#| label: tbl-class-distribution
+#| tbl-cap: "Distribución de clases S3 en el conjunto Ames"
+…
+knitr::kable()
+```
+
+> Ver Tabla @tbl-class-distribution para la cuenta total de variables por clase.
+
+:::
+
+### En `chapters/02-data-description.qmd`
+
+::: {.verbatim}
+```r
+#| label: tbl-metrics-global         # renombrado desde `metrics_global`
+#| tbl-cap: "Métricas globales"
+data(ames); ames_raw <- as_tibble(ames)
+…
+knitr::kable()
+```
+
+> Como muestra la Tabla @tbl-metrics-global, el conjunto tiene 2930 observaciones y 74 variables.
+
+:::
+
+Para la estructura de clases:
+
+::: {.verbatim}
+```r
+#| label: tbl-class-distribution     # renombrado desde `class_distribution`
+#| tbl-cap: "Distribución de clases S3"
+…
+knitr::kable()
+```
+
+> Véase Tabla @tbl-class-distribution.
+
+:::
+
+En los demás chunks de ese capítulo recomendamos:
+
+- **`#| label: tbl-missing-values`** en lugar de `missing_values`.  
+- **`#| label: tbl-duplicate-check`** en lugar de `duplicate_check`.  
+- **`#| label: tbl-categorical-absence`** en lugar de `categorical_absence`.  
+- **`#| label: tbl-zeros-structural`** en lugar de `zeros_structural`.  
+
+y actualizar todas las referencias en el texto a `@tbl-…` correspondientes.
+
+Con estos ejemplos claros, ya tenés un patrón reproducible:
+
+1. **Etiqueta del chunk** con prefijo `tbl-`.  
+2. **Caption** en el mismo header (`tbl-cap:`) o en `kable(caption=…)`.  
+3. **Referencia** en el texto con `@tbl-etiqueta`.  
+
+Así Quarto se ocupa de numerar y enlazar todo automáticamente.
+
+## Bibliografía con `references.bib`
+
+1. **Archivo BibTeX**:
+
+   * Guarda en `references.bib` todas tus entradas:
+
+     ```bibtex
+     @article{ames_decock_2011,
+       author  = {De Cock, Dean},
+       title   = {Ames, Iowa: Alternative to the Boston Housing Data},
+       journal = {Journal of Statistics Education},
+       year    = {2011},
+     }
+     ```
+
+2. **Citas en el texto**:
+
+   * Usá `[Texto de apoyo @clave]` o solo `[@clave]` en cualquier `.qmd`:
+
+     ```markdown
+     Según De Cock [@ames_decock_2011], este dataset…
+     ```
+
+3. **Listado de referencias**:
+
+   * Conservar `references.qmd` como Apéndice final:
+
+     ```markdown
+     # Referencias {.unnumbered}
+
+     ::: {#refs}
+     :::
+     ```
+
+   * Quarto compilará automáticamente la sección con todas las entradas citadas.
+
+## Flujo de trabajo resumido
+
+1. **Editar** `_quarto.yml` y confirmar capítulos y appendices.
+2. **Crear** cada capítulo en `chapters/` siguiendo la estructura propuesta.
+3. **Nombrar** chunks de tablas/figuras y agregar captions + `@id`.
+4. **Citar** con `[@clave]` donde corresponda.
+5. **Referenciar** con `@tbl-mi-tabla` o `[texto](#mi-seccion)`.
+6. **Compilar** con:
+
+   ```bash
+   quarto render
+   ```
+
+Con esta guía tenés una visión clara de la **organización**, los **sistemas de referencias cruzadas** y el **manejo de bibliografía** en tu proyecto Quarto Book. ¡Éxitos en tu trabajo!
