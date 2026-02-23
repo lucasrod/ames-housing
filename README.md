@@ -89,22 +89,40 @@ modeldata::ames (2930 obs, 74 vars)
 
 ## Scripts R del Pipeline
 
-El pipeline de datos se implementa mediante cuatro scripts en `scripts/`, cargados automáticamente vía `.Rprofile`:
+El pipeline de datos se implementa mediante cuatro scripts en `scripts/`. La carga y ejecución sigue dos patrones:
+
+### `.Rprofile` — Carga automática global
+
+```r
+# .Rprofile (raíz del proyecto)
+source("scripts/setup.R")
+source("scripts/funciones-tablas.R")
+```
+
+**Qué hace**: al abrir RStudio o iniciar una sesión R en el proyecto, **automáticamente** ejecuta estos dos scripts, haciendo que sus funciones estén disponibles en **todos** los capítulos `.qmd` sin necesidad de `source()` o `library()` adicionales.
+
+**Por qué es útil**: garantiza un ambiente consistente en todo el libro sin código repetido.
+
+---
 
 ### `scripts/setup.R`
-Configuración global del proyecto, cargada al inicio de cada sesión R.
+Configuración global del proyecto.
 
-**Funciones principales**:
-- Carga de paquetes: `tidyverse`, `modeldata`, `skimr`, `scales`, `knitr`
-- Configuración de `conflicted` para resolver conflictos de nombres
-- Opciones de knitr y display
+**Contenido**:
+- `library(tidyverse)`, `library(modeldata)`, `library(skimr)`, `library(scales)`, `library(knitr)`
+- Configuración de `conflicted::conflicts_prefer()` para resolver conflictos de nombres (ej. `dplyr::filter` vs `stats::filter`)
+- Opciones de `knitr` para chunks (tamaño de figura, formato de salida)
 
-**Uso**: se ejecuta automáticamente al abrir el proyecto (vía `.Rprofile`)
+**Invocación**: automática vía `.Rprofile` al inicio de cada sesión
+
+**Disponibilidad**: todos los capítulos tienen acceso a estos paquetes y configuraciones sin `library()` explícito
+
+---
 
 ### `scripts/funciones-tablas.R`
 Funciones helper para generar tablas descriptivas con formato consistente.
 
-**Funciones principales**:
+**Funciones (8 en total)**:
 - `create_num_classification_table()` - tabla de variables numéricas con cardinalidad
 - `create_cat_classification_table()` - tabla de variables categóricas con niveles
 - `create_cat_levels_table()` - tabla de niveles categóricos con frecuencias
@@ -114,12 +132,22 @@ Funciones helper para generar tablas descriptivas con formato consistente.
 - `create_present_but_zero_table()` - discrepancias: presente pero cero
 - `create_absent_but_positive_table()` - discrepancias: ausente pero positivo
 
-**Uso**: se cargan automáticamente al inicio (vía `.Rprofile`), disponibles en todos los capítulos
+**Invocación**: automática vía `.Rprofile` al inicio de cada sesión
+
+**Disponibilidad**: usadas en caps. 2, 3, 10 (apéndice de tablas) sin `source()` explícito
+
+**Ejemplo de uso** (en `chapters/03-data-cleaning.qmd`):
+```r
+#| label: zeros-structural
+create_zero_proportion_table(ames_dict, ames_raw, top_n = 15)
+```
+
+---
 
 ### `scripts/data-cleaning.R`
 Funciones de limpieza implementadas en el Capítulo 3. Siguen el patrón de funciones puras con trazabilidad por atributos.
 
-**Funciones principales**:
+**Funciones (4 en total)**:
 - `convert_structural_zeros_to_na(data, zero_vars)` - convierte ceros estructurales a `NA`
   - Adjunta atributo `"zero_summary"` con conteo de transformaciones por variable
 - `create_has_num_indicators(data, num_vars, threshold)` - crea indicadores binarios `has_*` desde variables numéricas
@@ -129,15 +157,36 @@ Funciones de limpieza implementadas en el Capítulo 3. Siguen el patrón de func
 - `create_has_indicators(data, cat_vars, none_levels)` - crea indicadores binarios `has_*` desde variables categóricas
   - Adjunta atributo `"has_summary"` con conteo de presencia/ausencia
 
-**Uso**: se registran vía `knitr::read_chunk("../scripts/data-cleaning.R")` en cap. 3, luego se invocan por label
+**Invocación** (en `chapters/03-data-cleaning.qmd`):
+
+1. **Registro de chunks** (línea 21):
+   ```r
+   knitr::read_chunk("../scripts/data-cleaning.R")
+   ```
+
+2. **Carga de definiciones** (línea 185):
+   ```r
+   #| label: convert-structural-zeros
+   # Chunk vacío — la definición viene del .R (líneas marcadas con ## ---- convert-structural-zeros ----)
+   ```
+
+3. **Invocación de funciones** (línea 199):
+   ```r
+   ames1 <- convert_structural_zeros_to_na(ames_raw, zero_vars = structural_zero_vars)
+   ```
+
+**Patrón**: `knitr::read_chunk()` registra los chunks etiquetados en el `.R` → chunks vacíos con `#| label:` en el `.qmd` cargan las definiciones → funciones se invocan normalmente
 
 **Output**: `data/ames_clean.rds`
+
+---
 
 ### `scripts/transformations.R`
 Pipeline de transformaciones implementado en el Capítulo 4. Aplica filtros, variables derivadas y transformaciones de potencia.
 
-**Funciones principales**:
-- `filter_outliers_decock(data)` - filtra outliers de `Gr_Liv_Area > 4000` (recomendación De Cock 2011)
+**Funciones (7+ en total)**:
+- `drop_outliers_grlivarea(data, cutoff)` - filtra outliers de `Gr_Liv_Area > cutoff` (recomendación De Cock 2011)
+- `subset_for_intro(data, ...)` - subconjunto para cursos introductorios (ventas normales, viviendas pequeñas)
 - `create_total_sqft(data)` - crea `Total_SqFt = Total_Bsmt_SF + Gr_Liv_Area`
 - `create_fireyn(data)` - crea indicador binario `FireYN` desde `Fireplaces`
 - `regenerate_has_indicators(data)` - regenera indicadores `has_*` tras filtros
@@ -146,7 +195,20 @@ Pipeline de transformaciones implementado en el Capítulo 4. Aplica filtros, var
 - `apply_power_transformations(data, vars, power)` - aplica transformaciones log/sqrt/sq
   - Adjunta atributo `"transform_log"` con lista de variables transformadas
 
-**Uso**: se registran vía `knitr::read_chunk("../scripts/transformations.R")` en cap. 4, luego se invocan por label
+**Invocación** (en `chapters/04-transformations.qmd`):
+
+1. **Carga del script completo** (línea 97):
+   ```r
+   source("../scripts/transformations.R")
+   ```
+
+2. **Invocación de funciones** (líneas 111, 125, etc.):
+   ```r
+   ames_tf <- drop_outliers_grlivarea(ames_clean, cutoff = tf_params$cutoff)
+   ames_tf <- subset_for_intro(ames_tf, ...)
+   ```
+
+**Patrón**: `source()` directo → funciones disponibles → se invocan normalmente
 
 **Output**: `data/ames_tf_generic.rds`
 
