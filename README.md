@@ -87,6 +87,69 @@ modeldata::ames (2930 obs, 74 vars)
       └─ Transformaciones de potencia (log, sqrt, sq)
 ```
 
+## Scripts R del Pipeline
+
+El pipeline de datos se implementa mediante cuatro scripts en `scripts/`, cargados automáticamente vía `.Rprofile`:
+
+### `scripts/setup.R`
+Configuración global del proyecto, cargada al inicio de cada sesión R.
+
+**Funciones principales**:
+- Carga de paquetes: `tidyverse`, `modeldata`, `skimr`, `scales`, `knitr`
+- Configuración de `conflicted` para resolver conflictos de nombres
+- Opciones de knitr y display
+
+**Uso**: se ejecuta automáticamente al abrir el proyecto (vía `.Rprofile`)
+
+### `scripts/funciones-tablas.R`
+Funciones helper para generar tablas descriptivas con formato consistente.
+
+**Funciones principales**:
+- `create_num_classification_table()` - tabla de variables numéricas con cardinalidad
+- `create_cat_classification_table()` - tabla de variables categóricas con niveles
+- `create_cat_levels_table()` - tabla de niveles categóricos con frecuencias
+- `create_cat_absence_table()` - tabla de ausencias estructurales en categóricas
+- `create_zero_proportion_table()` - tabla de proporciones de ceros en numéricas
+- `create_absence_pair_table()` - métricas de ausencia por pares cat-num
+- `create_present_but_zero_table()` - discrepancias: presente pero cero
+- `create_absent_but_positive_table()` - discrepancias: ausente pero positivo
+
+**Uso**: se cargan automáticamente al inicio (vía `.Rprofile`), disponibles en todos los capítulos
+
+### `scripts/data-cleaning.R`
+Funciones de limpieza implementadas en el Capítulo 3. Siguen el patrón de funciones puras con trazabilidad por atributos.
+
+**Funciones principales**:
+- `convert_structural_zeros_to_na(data, zero_vars)` - convierte ceros estructurales a `NA`
+  - Adjunta atributo `"zero_summary"` con conteo de transformaciones por variable
+- `create_has_num_indicators(data, num_vars, threshold)` - crea indicadores binarios `has_*` desde variables numéricas
+  - Adjunta atributo `"has_num_summary"` con conteo de presencia/ausencia
+- `recode_categorical_absence(data, pairs, none_levels)` - recodifica pares cat-num discordantes
+  - Adjunta atributo `"recode_summary"` con conteo de recodificaciones
+- `create_has_indicators(data, cat_vars, none_levels)` - crea indicadores binarios `has_*` desde variables categóricas
+  - Adjunta atributo `"has_summary"` con conteo de presencia/ausencia
+
+**Uso**: se registran vía `knitr::read_chunk("../scripts/data-cleaning.R")` en cap. 3, luego se invocan por label
+
+**Output**: `data/ames_clean.rds`
+
+### `scripts/transformations.R`
+Pipeline de transformaciones implementado en el Capítulo 4. Aplica filtros, variables derivadas y transformaciones de potencia.
+
+**Funciones principales**:
+- `filter_outliers_decock(data)` - filtra outliers de `Gr_Liv_Area > 4000` (recomendación De Cock 2011)
+- `create_total_sqft(data)` - crea `Total_SqFt = Total_Bsmt_SF + Gr_Liv_Area`
+- `create_fireyn(data)` - crea indicador binario `FireYN` desde `Fireplaces`
+- `regenerate_has_indicators(data)` - regenera indicadores `has_*` tras filtros
+- `collapse_ordinal_scales(data)` - colapsa escalas ordinales (ej. `Bsmt_Cond` → `Bsmt_Cond_grp`)
+- `reorder_factor_baselines(data)` - reordena niveles base en factores para modelado
+- `apply_power_transformations(data, vars, power)` - aplica transformaciones log/sqrt/sq
+  - Adjunta atributo `"transform_log"` con lista de variables transformadas
+
+**Uso**: se registran vía `knitr::read_chunk("../scripts/transformations.R")` en cap. 4, luego se invocan por label
+
+**Output**: `data/ames_tf_generic.rds`
+
 ## Datos
 
 - **Fuente**: paquete R `{modeldata}` (version curada del Ames Housing de De Cock 2011)
