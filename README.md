@@ -238,6 +238,7 @@ Las decisiones de diseno del proyecto estan documentadas formalmente en `docs/ad
 | [004](docs/adr-004-discrepancias-pares.md) | Resolucion de discrepancias en pares categorico-numericos |
 | [005](docs/adr-005-patron-funciones-puras.md) | Patron de funciones puras con trazabilidad por atributos |
 | [006](docs/adr-006-estructura-quarto-book.md) | Estructura del Quarto Book y gestion de tablas |
+| [007](docs/adr-007-mlflow-experiment-tracking.md) | MLflow para rastreo de experimentos en modelado y clustering |
 
 ## Patron de diseno de funciones R
 

@@ -6,22 +6,6 @@ Informe academico (Quarto Book) para el curso Estadistica Descriptiva (CDR, FCEA
 Idioma del informe y la narrativa: **espanol**.
 Idioma del codigo y nombres de variables: **ingles** (siguiendo el dataset original).
 
-## Desviaciones respecto al CLAUDE.md global
-
-### ADRs
-- Decisiones de arquitectura documentadas en `docs/adr-*.md`.
-- Las decisiones tambien se narran inline en los capitulos `.qmd`, pero los ADRs son la referencia canonica.
-- Ver seccion "Decisiones de arquitectura" mas abajo para el indice completo.
-
-### Determinismo parcial
-- No hay seeds explícitos aun (se necesitaran en caps 6-7 para modelado y clustering).
-- No hay lockfile de dependencias R (considerar `renv` si se necesita reproducibilidad estricta).
-
-### Sin tracking formal de experimentos
-- No se usa MLflow, DVC ni similar.
-- Los resultados se documentan narrativamente en los capitulos del Quarto Book.
-- Metricas y baselines se definen dentro de los capitulos de modelado (pendientes).
-
 ## Convenciones del proyecto
 
 ### Estructura Quarto Book
@@ -35,6 +19,8 @@ Idioma del codigo y nombres de variables: **ingles** (siguiendo el dataset origi
 - `funciones-tablas.R`: funciones helper para generar tablas descriptivas (cargado via `.Rprofile`)
 - `data-cleaning.R`: funciones de limpieza (ceros -> NA, recodificacion, indicadores)
 - `transformations.R`: pipeline de transformaciones (filtros, variables derivadas, potencias)
+- `modeling.R`: recipes, model specs, `run_model()` con MLflow tracking (caps 6)
+- `clustering.R`: `run_kmeans()`, `run_hierarchical()` con MLflow tracking (caps 7)
 
 ### Patron de funciones R
 - Funciones puras: reciben data.frame, devuelven data.frame nuevo
@@ -74,11 +60,20 @@ modeldata::ames → ames_raw → ames_clean (data/ames_clean.rds) → ames_tf_ge
 | [004](docs/adr-004-discrepancias-pares.md) | Resolucion de discrepancias en pares cat-num | Aceptada |
 | [005](docs/adr-005-patron-funciones-puras.md) | Patron de funciones puras con trazabilidad por atributos | Aceptada |
 | [006](docs/adr-006-estructura-quarto-book.md) | Estructura del Quarto Book y gestion de tablas | Aceptada |
+| [007](docs/adr-007-mlflow-experiment-tracking.md) | MLflow para rastreo de experimentos en modelado y clustering | Aceptada |
+
+## Rastreo de experimentos con MLflow
+
+- **Experimentos**: `ames-regression` (cap 6), `ames-clustering` (cap 7)
+- **Patron**: funciones en `scripts/modeling.R` y `scripts/clustering.R` envuelven workflows con `mlflow_start_run()`
+- **Capitulos .qmd**: permanecen limpios, solo invocan `run_model()`, `run_kmeans()`, etc.
+- **UI**: `Rscript -e "mlflow::mlflow_ui()"` abre http://localhost:5000
+- **Seeds**: `set.seed(2025)` para reproducibilidad
+- Ver ADR-007 para detalles
 
 ## Pendientes conocidos
 
-- Capitulos 5-8 son placeholders: EDA, modelado, clustering, conclusiones
-- `index.qmd` tiene texto placeholder de Quarto por defecto
-- Cap 8 tiene conclusiones genericas que deben actualizarse con resultados reales
-- Falta inicializar git en el proyecto
-- Considerar agregar seeds al implementar caps 6-7
+- Capitulo 5 (EDA): placeholder, pendiente de implementacion
+- Capitulos 6-7 (modelado, clustering): estructura definida (ADR-007), pendiente de implementacion completa
+- Capitulo 8 (conclusiones): conclusiones genericas, deben actualizarse con resultados reales
+- `index.qmd`: texto placeholder de Quarto por defecto
