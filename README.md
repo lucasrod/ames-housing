@@ -226,6 +226,34 @@ Pipeline de transformaciones implementado en el Capítulo 4. Aplica filtros, var
 - **Paquetes principales**: tidyverse, modeldata, skimr, knitr, scales, conflicted
 - **Paquetes planificados** (caps 5-8): tidymodels, e1071, robustbase
 
+## Recursos para agentes de codigo
+
+Este proyecto esta optimizado para trabajo asistido con agentes de codigo (Claude Code CLI, Cursor, etc.). Los siguientes skills y servidores MCP estan configurados para maximizar productividad:
+
+### Skills recomendados
+
+| Skill | Ubicacion | Proposito |
+|---|---|---|
+| **quarto-r-book** | Local (`quarto-r-book/`) | Skill especifico del proyecto. Cubre patrones de Quarto Book con R: sistema de cross-references (`{{< embed >}}`, `@tbl-`, `@fig-`), integracion de scripts R (`.Rprofile`, `read_chunk()`, `source()`), callouts, bibliografia, y path behavior. **Critico para este proyecto**. |
+| **quarto-authoring** | Global (symlink) | Complemento para authoring general de Quarto: code cells, YAML config, conversion desde R Markdown, sitios web, presentaciones. Util para features generales de Quarto no cubiertos por quarto-r-book. |
+| **doc-coauthoring** | Global | Workflow estructurado para co-autoria de documentacion tecnica. Opcional pero util para refinar la narrativa academica del informe. |
+| **llm-r-skills** | Global (`jsperger/llm-r-skills`) | Coleccion de 8 skills especializados para R: `ggplot2`, `tidymodels-overview`, `tidy-evaluation`, `designing-tidy-r-functions`, `hardhat`, `metaprogramming`, `rlang-conditions`, `targets-pipelines`. **Util para caps 5-7** (EDA, modelado, clustering). |
+
+### Servidores MCP configurados
+
+| Servidor | Proposito | Tools clave |
+|---|---|---|
+| **r-studio** (ClaudeR) | Ejecucion bidireccional R ↔ Claude Code. Permite ejecutar codigo R, visualizar plots, leer/modificar archivos, gestionar sesiones RStudio. **Critico para desarrollo autonomo**. | `execute_r`, `execute_r_with_plot`, `get_active_document`, `read_file`, `execute_r_async` (para codigo >25s) |
+| **r-btw** | Consulta on-demand de documentacion de paquetes R (help pages, vignettes, NEWS). Evita salir del contexto para buscar docs. **Muy util para explorar APIs de paquetes**. | `btw_tool_docs_help_page`, `btw_tool_docs_vignette`, `btw_tool_docs_package_news` |
+
+### Por que estos recursos?
+
+- **quarto-r-book**: El proyecto es un Quarto Book academico con patrones especificos (embed tables, multi-chapter R workflows) que difieren de Quarto estandar. Este skill local consolida todas las convenciones del proyecto.
+- **llm-r-skills**: Proporciona expertise especializada en ecosistema tidyverse/tidymodels para caps 5-7. Especialmente utiles: `ggplot2` (visualizaciones EDA), `tidymodels-overview` (workflows de modelado), `tidy-evaluation` (funciones NSE avanzadas).
+- **r-studio (ClaudeR)**: Permite desarrollo autonomo sin intervension manual — el agente puede ejecutar R, ver plots, iterar sobre analisis, y proponer cambios basandose en resultados reales.
+- **r-btw**: Acceso rapido a documentacion de paquetes R (skimr, tidymodels, etc.) sin interrumpir el flujo de trabajo.
+- **doc-coauthoring** y **quarto-authoring**: Complementan la generacion de contenido narrativo y tecnico para el informe academico.
+
 ## Decisiones de arquitectura (ADRs)
 
 Las decisiones de diseno del proyecto estan documentadas formalmente en `docs/adr-*.md`:
