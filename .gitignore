@@ -62,3 +62,6 @@ temp/
 mlruns/
 
 **/*.quarto_ipynb
+
+# Claude Code settings (local only)
+.claude/

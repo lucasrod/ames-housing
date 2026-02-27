@@ -27,7 +27,7 @@ vl_vec <- function(vars) sapply(vars, vl, USE.NAMES = FALSE)
 
 ## Introducción {#sec-eda-intro}
 
-Los capítulos anteriores prepararon el dataset Ames a través de limpieza (cap. 3) y transformaciones (cap. 4), produciendo `ames_tf_generic` con `r nrow(ames_tf)` observaciones y `r ncol(ames_tf)` variables. Este capítulo explora la estructura estadística y las relaciones entre variables, con foco en identificar los predictores más relevantes del precio de venta y detectar patrones que guíen las decisiones de modelado en los capítulos 6 y 7.
+Los capítulos anteriores prepararon el dataset Ames a través de limpieza (@sec-data-cleaning, cap. 3) y transformaciones (@sec-transformations, cap. 4), produciendo `ames_tf_generic` con `r nrow(ames_tf)` observaciones y `r ncol(ames_tf)` variables. Este capítulo explora la estructura estadística y las relaciones entre variables, con foco en identificar los predictores más relevantes del precio de venta y detectar patrones que guíen las decisiones de modelado en los capítulos 6 y 7.
 
 ## Variable de Respuesta: Sale_Price {#sec-sale-price}
 
