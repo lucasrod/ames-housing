@@ -60,3 +60,5 @@ temp/
 
 # MLflow
 mlruns/
+
+**/*.quarto_ipynb

@@ -1,26 +1,629 @@
 ---
-title: "Exploración de Datos (EDA)"
+title: "Análisis Exploratorio de Datos (EDA)"
+subtitle: "Exploración visual y estadística del dataset transformado"
 ---
 
-## 5.1 EDA Univariado
-
-### Variables Numéricas
 ```{r}
-# placeholder: histograma y estadísticos de ejemplo
+#| label: setup-eda
+#| include: false
+library(e1071)
+library(patchwork)
+library(corrplot)
+library(ggridges)
+library(viridis)
+
+source("../scripts/eda.R")
+
+ames_tf <- readr::read_rds("../data/ames_tf_generic.rds")
+
+# Diccionario de variables → etiquetas en español
+ames_dict <- read_csv("../data/data-dictionary.csv", show_col_types = FALSE) %>%
+  rename(tipo_semantico = type)
+
+# Helper vectorizado para labels
+vl <- function(var) lookup_var_label(var, ames_dict)
+vl_vec <- function(vars) sapply(vars, vl, USE.NAMES = FALSE)
 ```
 
-### Variables Categóricas
+## Introducción {#sec-eda-intro}
+
+Los capítulos anteriores prepararon el dataset Ames a través de limpieza (cap. 3) y transformaciones (cap. 4), produciendo `ames_tf_generic` con `r nrow(ames_tf)` observaciones y `r ncol(ames_tf)` variables. Este capítulo explora la estructura estadística y las relaciones entre variables, con foco en identificar los predictores más relevantes del precio de venta y detectar patrones que guíen las decisiones de modelado en los capítulos 6 y 7.
+
+## Variable de Respuesta: Sale_Price {#sec-sale-price}
+
+Antes de estudiar las covariables, conviene entender la distribución de la variable que buscamos predecir.
 
 ```{r}
-# placeholder: boxplot de Sale_Price por Neighborhood
+#| label: tbl-sale-price-stats
+#| tbl-cap: "Estadísticos descriptivos del precio de venta"
+compute_summary_stats(ames_tf, "Sale_Price") %>%
+  mutate(
+    descripcion = vl("Sale_Price"),
+    across(c(mean, sd, median, q25, q75, min, max), ~ scales::dollar(.x)),
+    across(c(skewness, kurtosis), ~ round(.x, 2))
+  ) %>%
+  select(variable, descripcion, everything()) %>%
+  kable()
 ```
-
-## 5.2 EDA Multivariado
-
-* Correlaciones entre variables numéricas (matriz resumida).
-* Scatterplots selectivos con tendencia lineal.
-* Boxplots de variables categóricas relevantes.
 
 ```{r}
-# placeholder: función para scatter + wrap_plots
+#| label: fig-sale-price-dist
+#| fig-cap: "Distribución del precio de venta: valores originales (A) vs transformación logarítmica (B)"
+#| fig-alt: "Dos histogramas con curva de densidad superpuesta. El panel A muestra la distribución original de Sale_Price con asimetría positiva marcada (media > mediana). El panel B muestra la distribución tras transformación log10, aproximadamente simétrica y cercana a la normal."
+#| fig-width: 10
+#| fig-height: 5
+
+sp_mean <- mean(ames_tf$Sale_Price)
+sp_median <- median(ames_tf$Sale_Price)
+
+p1 <- ggplot(ames_tf, aes(x = Sale_Price)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50,
+                 fill = "#56B4E9", color = "white", alpha = 0.8) +
+  geom_density(linewidth = 0.8, color = "#E69F00") +
+  geom_vline(xintercept = sp_mean, linetype = "dashed", color = "#D55E00", linewidth = 0.7) +
+  geom_vline(xintercept = sp_median, linetype = "solid", color = "#009E73", linewidth = 0.7) +
+  annotate("text", x = sp_mean + 30000, y = Inf,
+           label = paste0("Media: ", scales::dollar(sp_mean)),
+           vjust = 2, hjust = 0, size = 3, color = "#D55E00") +
+  annotate("text", x = sp_median - 30000, y = Inf,
+           label = paste0("Mediana: ", scales::dollar(sp_median)),
+           vjust = 3.5, hjust = 1, size = 3, color = "#009E73") +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  labs(title = "Distribución original", x = vl("Sale_Price"), y = "Densidad") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+p2 <- ggplot(ames_tf, aes(x = log10(Sale_Price))) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50,
+                 fill = "#56B4E9", color = "white", alpha = 0.8) +
+  geom_density(linewidth = 0.8, color = "#E69F00") +
+  labs(title = "Distribución log\u2081\u2080", x = "log\u2081\u2080(Precio de venta)", y = "Densidad") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+p1 + p2 + plot_annotation(tag_levels = "A")
 ```
+
+La asimetría positiva (`r round(e1071::skewness(ames_tf$Sale_Price), 2)`) se reduce drásticamente con la transformación logarítmica (`r round(e1071::skewness(log10(ames_tf$Sale_Price)), 2)`), acercando la distribución a la normalidad. Esto motiva el uso de `log(Sale_Price)` como variable respuesta en el capítulo 6.
+
+```{r}
+#| label: fig-sale-price-qq
+#| fig-cap: "QQ-plots del precio de venta: original (A) vs log₁₀ (B)"
+#| fig-alt: "Dos QQ-plots comparando los cuantiles observados contra los teóricos de una distribución normal. El panel A (original) muestra desviación pronunciada en las colas. El panel B (log10) se ajusta mucho mejor a la línea teórica."
+#| fig-width: 10
+#| fig-height: 4.5
+
+qq1 <- ggplot(ames_tf, aes(sample = Sale_Price)) +
+  geom_qq(alpha = 0.3, size = 1, color = "grey30") +
+  geom_qq_line(color = "#E69F00", linewidth = 0.8) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  labs(title = "QQ-plot original", x = "Cuantiles teóricos", y = vl("Sale_Price")) +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+qq2 <- ggplot(ames_tf, aes(sample = log10(Sale_Price))) +
+  geom_qq(alpha = 0.3, size = 1, color = "grey30") +
+  geom_qq_line(color = "#E69F00", linewidth = 0.8) +
+  labs(title = "QQ-plot log\u2081\u2080", x = "Cuantiles teóricos",
+       y = "log\u2081\u2080(Precio de venta)") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+qq1 + qq2 + plot_annotation(tag_levels = "A")
+```
+
+```{r}
+#| label: fig-sale-price-box
+#| fig-cap: "Boxplot del precio de venta identificando valores atípicos"
+#| fig-alt: "Boxplot horizontal del precio de venta mostrando la distribución con outliers marcados en naranja por encima de aproximadamente $400K."
+#| fig-width: 8
+#| fig-height: 3
+
+ggplot(ames_tf, aes(x = Sale_Price, y = "")) +
+  geom_boxplot(fill = "#56B4E9", alpha = 0.7, outlier.alpha = 0.5, outlier.color = "#D55E00") +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  labs(x = vl("Sale_Price"), y = NULL) +
+  theme(panel.grid.minor = element_blank(), axis.text.y = element_blank())
+```
+
+::: {.callout-tip}
+## Hallazgo clave
+La transformación logarítmica de `Sale_Price` reduce la asimetría de `r round(e1071::skewness(ames_tf$Sale_Price), 2)` a `r round(e1071::skewness(log10(ames_tf$Sale_Price)), 2)`, mejorando sustancialmente el cumplimiento de los supuestos de normalidad necesarios para los modelos lineales del capítulo 6.
+:::
+
+## EDA Univariado {#sec-univariado}
+
+### Variables numéricas continuas clave
+
+```{r}
+#| label: tbl-num-summary-key
+#| tbl-cap: "Estadísticos descriptivos de las variables numéricas más relevantes"
+key_num_vars <- c("Total_SqFt", "Gr_Liv_Area", "Total_Bsmt_SF", "Garage_Area",
+                  "Lot_Area", "Year_Built", "Year_Remod_Add")
+
+compute_summary_stats(ames_tf, key_num_vars) %>%
+  mutate(
+    descripcion = vl_vec(variable),
+    across(c(mean, sd, median, q25, q75, min, max), ~ round(.x, 1)),
+    across(c(skewness, kurtosis), ~ round(.x, 2))
+  ) %>%
+  select(variable, descripcion, everything()) %>%
+  kable()
+```
+
+{{< embed 10-tbl-appendix.qmd#tbl-num-descriptive-full >}}
+
+> La tabla completa con todos los estadísticos descriptivos de variables numéricas se encuentra en la @tbl-num-descriptive-full del apéndice.
+
+```{r}
+#| label: fig-area-histograms
+#| fig-cap: "Distribución de las principales variables de superficie"
+#| fig-alt: "Panel de 4 histogramas mostrando la distribución de Total SqFt, Gr Liv Area, Total Bsmt SF y Garage Area. Líneas verticales punteadas marcan la mediana de cada variable."
+#| fig-width: 10
+#| fig-height: 8
+
+area_vars <- c("Total_SqFt", "Gr_Liv_Area", "Total_Bsmt_SF", "Garage_Area")
+
+area_plots <- purrr::map(area_vars, function(v) {
+  ggplot(ames_tf, aes(x = .data[[v]])) +
+    geom_histogram(bins = 40, fill = "#56B4E9", color = "white", alpha = 0.8) +
+    geom_vline(xintercept = median(ames_tf[[v]], na.rm = TRUE),
+               linetype = "dashed", color = "#D55E00", linewidth = 0.7) +
+    labs(x = vl(v), y = "Frecuencia") +
+    theme(panel.grid.minor = element_blank())
+})
+
+(area_plots[[1]] + area_plots[[2]]) / (area_plots[[3]] + area_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+```{r}
+#| label: fig-year-histograms
+#| fig-cap: "Distribución temporal: año de construcción y remodelación"
+#| fig-alt: "Dos histogramas mostrando Year_Built (bimodal con picos en 1950-1970 y post-2000) y Year_Remod_Add (concentrado en años recientes)."
+#| fig-width: 10
+#| fig-height: 4.5
+
+py1 <- ggplot(ames_tf, aes(x = Year_Built)) +
+  geom_histogram(bins = 40, fill = "#56B4E9", color = "white", alpha = 0.8) +
+  labs(x = vl("Year_Built"), y = "Frecuencia", title = vl("Year_Built")) +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+py2 <- ggplot(ames_tf, aes(x = Year_Remod_Add)) +
+  geom_histogram(bins = 40, fill = "#56B4E9", color = "white", alpha = 0.8) +
+  labs(x = vl("Year_Remod_Add"), y = "Frecuencia", title = vl("Year_Remod_Add")) +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+py1 + py2 + plot_annotation(tag_levels = "A")
+```
+
+`Year_Built` muestra dos modas claras: un pico entre 1950-1970 y una concentración fuerte post-2000, reflejando las fases de expansión de Ames. `Year_Remod_Add` acumula valores en el extremo reciente, lo cual es esperable dado que las viviendas sin remodelación registran el año de construcción original.
+
+### Variables discretas
+
+```{r}
+#| label: fig-discrete-bars
+#| fig-cap: "Distribución de variables discretas clave"
+#| fig-alt: "Panel de 5 gráficos de barras mostrando la distribución de Garage Cars (dominante: 2), Full Bath (dominante: 2), Fireplaces (dominante: 0-1), TotRms AbvGrd (dominante: 5-7) y Bedroom AbvGr (dominante: 3)."
+#| fig-width: 10
+#| fig-height: 8
+
+discrete_vars <- c("Garage_Cars", "Full_Bath", "Fireplaces", "TotRms_AbvGrd", "Bedroom_AbvGr")
+
+disc_plots <- purrr::map(discrete_vars, function(v) {
+  ggplot(ames_tf, aes(x = factor(.data[[v]]))) +
+    geom_bar(fill = "#56B4E9", alpha = 0.8) +
+    geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.3, size = 2.8) +
+    labs(x = vl(v), y = "Frecuencia") +
+    theme(panel.grid.minor = element_blank())
+})
+
+(disc_plots[[1]] + disc_plots[[2]] + disc_plots[[3]]) /
+  (disc_plots[[4]] + disc_plots[[5]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+La distribución de `Garage_Cars` indica que la gran mayoría de viviendas tienen garaje para 2 autos. Los `Fireplaces` muestran una clara dominancia del valor 0-1, lo que justificó la creación del indicador binario `FireYN` en el capítulo 4.
+
+### Variables categóricas clave
+
+```{r}
+#| label: fig-neighborhood-freq
+#| fig-cap: "Top 15 barrios por frecuencia de viviendas"
+#| fig-alt: "Gráfico de barras horizontales mostrando los 15 barrios con más viviendas en el dataset. North Ames lidera con más de 440 viviendas."
+#| fig-width: 8
+#| fig-height: 5
+
+top15 <- filter_top_neighborhoods(ames_tf, 15)
+
+top15 %>%
+  count(Neighborhood, sort = TRUE) %>%
+  mutate(Neighborhood = fct_reorder(Neighborhood, n)) %>%
+  ggplot(aes(x = n, y = Neighborhood)) +
+  geom_col(fill = "#56B4E9", alpha = 0.8) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3) +
+  labs(x = "Frecuencia", y = NULL, title = "Top 15 barrios por número de viviendas") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank()) +
+  xlim(0, max(count(top15, Neighborhood)$n) * 1.12)
+```
+
+```{r}
+#| label: fig-cat-bars
+#| fig-cap: "Distribución de variables categóricas seleccionadas"
+#| fig-alt: "Panel de 4 gráficos de barras horizontales para Bldg Type (dominante: OneFam ~80%), House Style (dominante: One Story), MS Zoning (dominante: Residential Low Density) y FireYN (aproximadamente mitad y mitad)."
+#| fig-width: 10
+#| fig-height: 8
+
+cat_vars <- c("Bldg_Type", "House_Style", "MS_Zoning", "FireYN")
+
+cat_plots <- purrr::map(cat_vars, function(v) {
+  ames_tf %>%
+    count(.data[[v]], sort = TRUE) %>%
+    mutate(!!v := fct_reorder(.data[[v]], n)) %>%
+    ggplot(aes(x = n, y = .data[[v]])) +
+    geom_col(fill = "#56B4E9", alpha = 0.8) +
+    geom_text(aes(label = n), hjust = -0.2, size = 2.8) +
+    labs(x = "Frecuencia", y = NULL, title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+})
+
+(cat_plots[[1]] + cat_plots[[2]]) / (cat_plots[[3]] + cat_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+Las viviendas unifamiliares (`OneFam`) dominan la muestra (~80%). La zonificación es mayoritariamente residencial de baja densidad (`Residential_Low_Density`). Aproximadamente la mitad de las viviendas tienen al menos una chimenea (`FireYN = Yes`).
+
+## EDA Bivariado {#sec-bivariado}
+
+### Sale_Price vs variables numéricas
+
+```{r}
+#| label: fig-scatter-price-numeric
+#| fig-cap: "Relación entre el precio de venta y las principales variables numéricas (escala log, con loess)"
+#| fig-alt: "Panel de 4 scatter plots mostrando Sale Price vs Total SqFt, Gr Liv Area, Garage Area y Year Built. Todos muestran relaciones positivas, siendo Total SqFt la más fuerte y lineal."
+#| fig-width: 10
+#| fig-height: 8
+
+scat_vars <- c("Total_SqFt", "Gr_Liv_Area", "Garage_Area", "Year_Built")
+
+scat_plots <- purrr::map(scat_vars, function(v) {
+  plot_scatter_vs_price(ames_tf, v, x_label = vl(v)) +
+    labs(title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+(scat_plots[[1]] + scat_plots[[2]]) / (scat_plots[[3]] + scat_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+Se observa una relación positiva fuerte y monotónica entre superficie total y precio. `Total_SqFt` muestra la relación más limpia, mientras que `Year_Built` presenta mayor dispersión pero una tendencia creciente clara, especialmente post-1960.
+
+```{r}
+#| label: fig-scatter-sqft-neighborhood
+#| fig-cap: "Superficie total vs precio de venta, coloreado por los 5 barrios más frecuentes"
+#| fig-alt: "Scatter plot de Total SqFt vs Sale Price con puntos coloreados por barrio (top 5) y rectas de regresión. Los barrios muestran interceptos distintos pero pendientes similares, ilustrando el efecto conjunto barrio + superficie."
+#| fig-width: 9
+#| fig-height: 6
+
+top5_names <- ames_tf %>%
+  count(Neighborhood, sort = TRUE) %>%
+  slice_head(n = 5) %>%
+  pull(Neighborhood)
+
+ames_tf %>%
+  mutate(Neighborhood_top5 = if_else(
+    Neighborhood %in% top5_names,
+    as.character(Neighborhood),
+    "Otros"
+  )) %>%
+  mutate(Neighborhood_top5 = fct_relevel(Neighborhood_top5, "Otros", after = Inf)) %>%
+  ggplot(aes(x = Total_SqFt, y = Sale_Price, color = Neighborhood_top5)) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  geom_smooth(data = . %>% filter(Neighborhood_top5 != "Otros"),
+              method = "lm", formula = y ~ x, se = FALSE, linewidth = 0.8) +
+  scale_y_log10(labels = scales::dollar_format()) +
+  scale_color_viridis_d(option = "D", end = 0.9) +
+  labs(x = vl("Total_SqFt"), y = vl("Sale_Price"), color = vl("Neighborhood"),
+       title = "Superficie total vs precio por barrio",
+       subtitle = "De Cock reporta ~80% de varianza explicada con solo Neighborhood + Total_SqFt") +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+```
+
+::: {.callout-note}
+## Modelo benchmark de De Cock
+Este gráfico ilustra el hallazgo central del autor del dataset: la combinación de `Total_SqFt` y `Neighborhood` explica aproximadamente el 80% de la variación en `Sale_Price`. Las rectas por barrio muestran interceptos distintos (efecto barrio) pero pendientes similares (efecto superficie).
+:::
+
+### Sale_Price vs variables binarias
+
+```{r}
+#| label: fig-violin-binary
+#| fig-cap: "Distribución del precio de venta por variables binarias (violin + boxplot interior)"
+#| fig-alt: "Panel de 4 violin plots mostrando Sale Price por Central Air (gran diferencial), FireYN (diferencial moderado), has pool (pocos casos positivos) y has fence (diferencial menor)."
+#| fig-width: 10
+#| fig-height: 8
+
+binary_vars <- c("Central_Air", "FireYN", "has_pool_qc", "has_fence")
+
+binary_plots <- purrr::map(binary_vars, function(v) {
+  plot_violin_vs_price(ames_tf, v, reorder = FALSE, x_label = vl(v)) +
+    labs(title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+(binary_plots[[1]] + binary_plots[[2]]) / (binary_plots[[3]] + binary_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+```{r}
+#| label: fig-boxplot-binary
+#| fig-cap: "Alternativa: boxplots del precio de venta por variables binarias"
+#| fig-alt: "Panel de 4 boxplots de Sale Price por las mismas variables binarias que la figura anterior, ofreciendo una visualización alternativa centrada en cuartiles y outliers."
+#| fig-width: 10
+#| fig-height: 8
+
+box_binary_plots <- purrr::map(binary_vars, function(v) {
+  plot_boxplot_vs_price(ames_tf, v, reorder = FALSE, x_label = vl(v)) +
+    labs(title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+(box_binary_plots[[1]] + box_binary_plots[[2]]) /
+  (box_binary_plots[[3]] + box_binary_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+Las variables binarias muestran diferencias de precio notables. El aire central (`Central_Air`) presenta el diferencial más pronunciado: las viviendas sin aire central se concentran en el rango bajo. `FireYN` y `has_pool_qc` también discriminan, aunque la piscina tiene muy pocos casos positivos.
+
+### Sale_Price vs variables categóricas multicategoría
+
+```{r}
+#| label: fig-violin-neighborhood
+#| fig-cap: "Distribución del precio de venta por barrio (top 15, violin + boxplot interior)"
+#| fig-alt: "Violin plot horizontal de Sale Price por los 15 barrios más frecuentes, ordenados por mediana. Northridge Heights y Timberland en el extremo superior, Iowa DOT and Rail Road en el inferior."
+#| fig-width: 9
+#| fig-height: 7
+
+plot_violin_vs_price(top15, "Neighborhood", x_label = vl("Neighborhood")) +
+  labs(title = "Precio de venta por barrio (Top 15)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+```{r}
+#| label: fig-boxplot-neighborhood
+#| fig-cap: "Alternativa: boxplots del precio de venta por barrio (top 15)"
+#| fig-alt: "Boxplot horizontal de Sale Price por los 15 barrios más frecuentes, ordenados por mediana. Misma información que el violin plot pero enfocada en cuartiles y outliers."
+#| fig-width: 9
+#| fig-height: 7
+
+plot_boxplot_vs_price(top15, "Neighborhood", x_label = vl("Neighborhood")) +
+  labs(title = "Precio de venta por barrio (Top 15)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+Los barrios muestran una dispersión considerable en precios. Northridge Heights, Somerset y Timberland concentran precios altos con distribuciones compactas, mientras que Old Town, Edwards e Iowa DOT/Rail Road presentan precios bajos. North Ames, el barrio más frecuente, tiene una distribución concentrada en el rango medio-bajo.
+
+```{r}
+#| label: fig-violin-categorical
+#| fig-cap: "Distribución del precio de venta por variables categóricas seleccionadas (violin)"
+#| fig-alt: "Panel de 4 violin plots mostrando Sale Price por tipo de edificación, estilo de vivienda, zonificación y condición general."
+#| fig-width: 10
+#| fig-height: 8
+
+multi_cat_vars <- c("Bldg_Type", "House_Style", "MS_Zoning", "Overall_Cond")
+
+multi_cat_plots <- purrr::map(multi_cat_vars, function(v) {
+  plot_violin_vs_price(ames_tf, v, x_label = vl(v)) +
+    labs(title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+(multi_cat_plots[[1]] + multi_cat_plots[[2]]) /
+  (multi_cat_plots[[3]] + multi_cat_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+```{r}
+#| label: fig-boxplot-categorical
+#| fig-cap: "Alternativa: boxplots del precio de venta por variables categóricas seleccionadas"
+#| fig-alt: "Panel de 4 boxplots de Sale Price por las mismas variables categóricas que la figura anterior."
+#| fig-width: 10
+#| fig-height: 8
+
+box_cat_plots <- purrr::map(multi_cat_vars, function(v) {
+  plot_boxplot_vs_price(ames_tf, v, x_label = vl(v)) +
+    labs(title = vl(v)) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+(box_cat_plots[[1]] + box_cat_plots[[2]]) /
+  (box_cat_plots[[3]] + box_cat_plots[[4]]) +
+  plot_annotation(tag_levels = "A")
+```
+
+```{r}
+#| label: fig-boxplot-overall-cond
+#| fig-cap: "Relación no monotónica entre condición general y precio de venta"
+#| fig-alt: "Boxplot de Sale Price por nivel de Overall Condition con línea conectando las medianas. La relación no es monotónica: las condiciones extremas tienen precios similares o menores que las intermedias."
+#| fig-width: 8
+#| fig-height: 5
+
+ggplot(ames_tf, aes(x = Overall_Cond, y = Sale_Price)) +
+  geom_boxplot(fill = "#56B4E9", alpha = 0.7, outlier.alpha = 0.3) +
+  stat_summary(fun = median, geom = "line", aes(group = 1),
+               color = "#D55E00", linewidth = 0.8) +
+  stat_summary(fun = median, geom = "point", color = "#D55E00", size = 2) +
+  scale_y_log10(labels = scales::dollar_format()) +
+  labs(x = vl("Overall_Cond"), y = vl("Sale_Price"),
+       title = paste("Relación no monotónica:", vl("Overall_Cond")),
+       subtitle = "La línea conecta las medianas por nivel") +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+```
+
+::: {.callout-warning}
+## Relación no monotónica
+`Overall_Cond` muestra un patrón no monotónico: las condiciones extremas (muy bajas y la más alta) tienen precios similares o menores a las intermedias. Esto sugiere que un tratamiento ordinal directo no es adecuado y puede requerir colapsar niveles para el modelado.
+:::
+
+### Patrones temporales
+
+```{r}
+#| label: fig-monthly-price
+#| fig-cap: "Precio de venta por mes: estacionalidad débil en precios, fuerte en volumen"
+#| fig-alt: "Violin plot con jitter y medianas conectadas de Sale Price por mes de venta. El volumen aumenta en meses cálidos (mayo-julio) pero la mediana del precio se mantiene relativamente estable."
+#| fig-width: 9
+#| fig-height: 5
+
+ggplot(ames_tf, aes(x = factor(Mo_Sold), y = Sale_Price)) +
+  geom_violin(fill = "#56B4E9", alpha = 0.5, color = "grey30") +
+  geom_jitter(alpha = 0.05, width = 0.2, size = 0.5) +
+  stat_summary(fun = median, geom = "point", color = "#D55E00", size = 3) +
+  stat_summary(fun = median, geom = "line", aes(group = 1),
+               color = "#D55E00", linewidth = 0.8) +
+  scale_y_log10(labels = scales::dollar_format()) +
+  labs(x = vl("Mo_Sold"), y = vl("Sale_Price"),
+       title = "Estacionalidad del precio de venta",
+       subtitle = "Los puntos naranjas marcan la mediana mensual") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+```
+
+El volumen de ventas aumenta en los meses cálidos (mayo-julio), pero la mediana del precio se mantiene relativamente estable. Esto indica un efecto estacional en la actividad del mercado más que en los precios.
+
+## Correlaciones {#sec-correlaciones}
+
+```{r}
+#| label: fig-cor-matrix
+#| fig-cap: "Matriz de correlación de las 12 variables numéricas más relevantes"
+#| fig-alt: "Heatmap triangular inferior de correlaciones entre 12 variables numéricas. Los colores viridis van del azul oscuro (correlación baja) al amarillo (correlación alta). Se destacan bloques de multicolinealidad entre variables de superficie y entre variables de garaje."
+#| fig-width: 8
+#| fig-height: 8
+
+cor_vars <- c("Sale_Price", "Total_SqFt", "Gr_Liv_Area", "Total_Bsmt_SF",
+              "Garage_Cars", "Garage_Area", "First_Flr_SF", "Year_Built",
+              "Full_Bath", "Year_Remod_Add", "TotRms_AbvGrd", "Fireplaces")
+
+cor_mat <- compute_cor_matrix(ames_tf, cor_vars)
+
+corrplot(cor_mat, method = "color", type = "lower", diag = FALSE,
+         addCoef.col = "black", number.cex = 0.65,
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8,
+         col = viridis(200),
+         title = "", mar = c(0, 0, 1, 0))
+```
+
+```{r}
+#| label: tbl-top-correlations
+#| tbl-cap: "Top 10 correlaciones con el precio de venta (ordenadas por |r|)"
+
+cor_with_price <- cor_mat["Sale_Price", ]
+cor_with_price <- cor_with_price[names(cor_with_price) != "Sale_Price"]
+
+tibble(
+  variable = names(cor_with_price),
+  descripcion = vl_vec(names(cor_with_price)),
+  r = round(cor_with_price, 3)
+) %>%
+  arrange(desc(abs(r))) %>%
+  slice_head(n = 10) %>%
+  kable(col.names = c("Variable", "Descripción", "r"))
+```
+
+::: {.callout-important}
+## Multicolinealidad detectada
+La matriz revela bloques de variables redundantes que deben considerarse en el modelado:
+
+- **Superficie**: `Gr_Liv_Area` y `Total_SqFt` ($r > 0.80$), así como `Total_Bsmt_SF` y `First_Flr_SF`. Preferir `Total_SqFt` como compuesta.
+- **Garaje**: `Garage_Cars` y `Garage_Area` ($r \approx 0.85$). Preferir `Garage_Cars` por interpretabilidad.
+- **Temporales**: `Year_Built` y `Year_Remod_Add` ($r > 0.60$), esperable por convención de codificación.
+:::
+
+## Patrones Espaciales: Neighborhood {#sec-neighborhood}
+
+```{r}
+#| label: fig-neighborhood-median-price
+#| fig-cap: "Precio mediano por barrio (n ≥ 10 viviendas), coloreado por precio"
+#| fig-alt: "Gráfico de barras horizontales del precio mediano por barrio, coloreado con escala viridis. Stone Brook y Northridge Heights lideran por encima de $300K, Iowa DOT and Rail Road cierra por debajo de $100K."
+#| fig-width: 9
+#| fig-height: 7
+
+neigh_summary <- ames_tf %>%
+  group_by(Neighborhood) %>%
+  summarise(
+    n = n(),
+    median_price = median(Sale_Price),
+    .groups = "drop"
+  ) %>%
+  filter(n >= 10) %>%
+  mutate(Neighborhood = fct_reorder(Neighborhood, median_price))
+
+ggplot(neigh_summary, aes(x = median_price, y = Neighborhood, fill = median_price)) +
+  geom_col(alpha = 0.9) +
+  geom_text(aes(label = scales::dollar(median_price, accuracy = 1)), hjust = -0.1, size = 2.8) +
+  scale_x_continuous(labels = scales::dollar_format(), expand = expansion(mult = c(0, 0.15))) +
+  scale_fill_viridis_c(option = "D", labels = scales::dollar_format(), guide = "none") +
+  labs(x = "Precio mediano (USD)", y = NULL,
+       title = "Precio mediano por barrio",
+       subtitle = "Barrios con al menos 10 viviendas") +
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+```
+
+```{r}
+#| label: fig-neighborhood-ridgeline
+#| fig-cap: "Distribución de log₁₀(precio de venta) por barrio (top 15, ridgeline)"
+#| fig-alt: "Ridgeline plot mostrando las densidades de log10 Sale Price para los 15 barrios más frecuentes. Las distribuciones están coloreadas con gradiente viridis y ordenadas por mediana de precio."
+#| fig-width: 9
+#| fig-height: 7
+
+top15 %>%
+  mutate(Neighborhood = fct_reorder(Neighborhood, Sale_Price, .fun = median)) %>%
+  ggplot(aes(x = log10(Sale_Price), y = Neighborhood, fill = after_stat(x))) +
+  geom_density_ridges_gradient(scale = 1.5, rel_min_height = 0.01,
+                                gradient_lwd = 0.5) +
+  scale_fill_viridis_c(option = "D", name = "log\u2081\u2080(Precio)") +
+  labs(x = "log\u2081\u2080(Precio de venta)", y = NULL,
+       title = "Distribución de precios por barrio (Top 15)") +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+```
+
+```{r}
+#| label: tbl-neighborhood-summary
+#| tbl-cap: "Resumen estadístico del precio de venta por barrio (Top 15)"
+
+top15 %>%
+  group_by(Neighborhood) %>%
+  summarise(
+    n = n(),
+    mediana = scales::dollar(median(Sale_Price)),
+    media = scales::dollar(mean(Sale_Price)),
+    sd = scales::dollar(sd(Sale_Price)),
+    cv = round(sd(Sale_Price) / mean(Sale_Price) * 100, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(cv)) %>%
+  kable(col.names = c("Barrio", "n", "Mediana", "Media", "SD", "CV (%)"))
+```
+
+Los barrios con mayor coeficiente de variación (CV) presentan mayor heterogeneidad interna en precios, lo que sugiere sub-mercados o diferencias de calidad dentro del mismo barrio. Los barrios premium (Northridge Heights, Somerset) tienden a tener CV menores, indicando mayor homogeneidad.
+
+## Síntesis y Hallazgos Principales {#sec-sintesis}
+
+El análisis exploratorio revela los siguientes patrones relevantes para las decisiones de modelado (cap. 6) y agrupamiento (cap. 7):
+
+::: {.callout-tip}
+## Hallazgos principales del EDA
+
+1. **Transformación logarítmica de Sale_Price**: la asimetría de `r round(e1071::skewness(ames_tf$Sale_Price), 2)` se reduce a ~0 con `log()`, mejorando sustancialmente la normalidad. Se recomienda usar `log(Sale_Price)` como variable respuesta.
+
+2. **Predictores dominantes**: `Total_SqFt` (r ≈ `r round(cor(ames_tf$Total_SqFt, ames_tf$Sale_Price), 2)`) y `Neighborhood` son las variables de mayor poder predictivo, consistente con el benchmark del 80% de varianza explicada reportado por De Cock.
+
+3. **Multicolinealidad** (ver @sec-correlaciones): se identifican bloques de variables redundantes. Preferir `Total_SqFt` sobre componentes y `Garage_Cars` sobre `Garage_Area`.
+
+4. **Indicadores binarios**: `Central_Air`, `FireYN`, y los indicadores `has_*` creados en el cap. 4 muestran diferenciales de precio claros y son candidatos directos para inclusión en el modelo.
+
+5. **Overall_Cond no monotónica** (ver @fig-boxplot-overall-cond): la relación entre condición general y precio no es lineal, sugiriendo colapsar la escala ordinal.
+
+6. **Estacionalidad débil**: la variación mensual afecta al volumen de transacciones más que al precio, por lo que `Mo_Sold` tiene bajo poder predictivo.
+
+7. **Efecto barrio** (ver @sec-neighborhood): la estratificación por barrio es relevante para el clustering (cap. 7), con segmentos naturales que van desde barrios de alta gama hasta zonas de menor valor.
+:::

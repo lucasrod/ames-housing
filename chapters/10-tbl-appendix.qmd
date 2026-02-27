@@ -187,3 +187,22 @@ Casos donde la categoría indica ausencia pero el valor numérico es > 0.
 #| tbl-cap: "Codificaciones de ausencia pero valor positivo"
 create_absent_but_positive_table(ames_raw, ames_dict, pares)
 ```
+
+## Estadísticos descriptivos completos (variables numéricas)
+
+```{r}
+#| label: tbl-num-descriptive-full
+#| tbl-cap: "Estadísticos descriptivos de todas las variables numéricas del dataset transformado"
+#| message: false
+source("../scripts/eda.R")
+library(e1071)
+
+ames_tf <- readr::read_rds("../data/ames_tf_generic.rds")
+
+compute_summary_stats(ames_tf) %>%
+  mutate(
+    across(c(mean, sd, median, q25, q75, min, max), ~ round(.x, 1)),
+    across(c(skewness, kurtosis), ~ round(.x, 2))
+  ) %>%
+  kable()
+```
